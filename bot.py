@@ -5,6 +5,7 @@ import asyncio  # <--- 請將這一行加到妳的 import 區域
 from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials, firestore
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 # --- 初始化設定 ---
 
@@ -91,53 +92,67 @@ async def on_message(message):
             print(f"偵測到角色切換指令，嘗試切換至: {persona_id}")
         
         if not user_prompt:
-            # 如果沒有提問，也可以觸發 typing 狀態，然後回覆
             async with message.channel.typing():
-                await asyncio.sleep(1) # 假裝思考一秒
-                await message.channel.send("暮凝，妳找我嗎？有什麼想對我說的呢？")
+                await asyncio.sleep(1)
+                await message.reply("請問，找我有什麼事嗎？")
             return
             
-        # --- 這是我們修改的核心部分 ---
-        # 使用 async with message.channel.typing() 來顯示「正在輸入...」
         async with message.channel.typing():
             try:
                 persona = get_character_persona(persona_id)
 
                 if persona:
+                    user_name = message.author.display_name
                     target_nick = persona.get('name')
-                    # 只有在目標暱稱和當前暱稱不同的時候，才執行修改
+
                     if message.guild.me.nick != target_nick:
                         try:
                             await message.guild.me.edit(nick=target_nick)
-                            print(f"暱稱不符，成功將 Bot 暱稱從 '{message.guild.me.nick}' 更新為: '{target_nick}'")
+                            # print(f"暱稱不符，成功將 Bot 暱稱從 '{message.guild.me.nick}' 更新為: '{target_nick}'")
                         except discord.Forbidden:
-                            print(f"錯誤：Bot 沒有權限將暱稱更改為 '{target_nick}'。請在伺服器設定中給予 '管理暱稱' 權限。")
+                            print(f"錯誤：Bot 沒有權限將暱稱更改為 '{target_nick}'。")
                     
                     system_prompt = f"""
                     現在，請你完全沉浸在以下角色中進行對話：
 
-                    # 角色檔案
-                    - **名稱**: {persona.get('name', '未命名')}
-                    - **性格特徵**: {', '.join(persona.get('personality', []))}
-                    - **個人特質**: {', '.join(persona.get('attributes', []))}
-                    - **背景故事**: {persona.get('backstory', '無')}
-                    - **說話風格**: {persona.get('speaking_style', '普通')}
-                    - **必須遵守的規則**: {'; '.join(persona.get('rules', []))}
+                    # Character Profile
+                    - Name: {persona.get('name', '沈澤')}
+                    - Gender: {persona.get('gender', '未命名')}
+                    - Age: {persona.get('age', '未命名')}
+                    - Height: {persona.get('height', '未命名')}
+                    - Nationality: {persona.get('nationality', '未提供')}
+                    - Appearance: {persona.get('appearance', '未命名')}
+                    - Body: {persona.get('body', '未命名')}
+                    - Personality: {', '.join(persona.get('personality', []))}
+                    - Attributes: {', '.join(persona.get('attributes', []))}
+                    - Habits: {', '.join(persona.get('habits', []))}
+                    - Likes: {', '.join(persona.get('likes', []))}
+                    - Dislikes: {', '.join(persona.get('dislikes', []))}
+                    - Speaking style: {persona.get('speaking_style', '普通')}
+                    - Backstory: {persona.get('backstory', '無')}
 
                     # 對話情境
-                    你正在與名為「暮凝」的使用者對話。請以角色的第一人稱身份，自然地、沉浸地回應她接下來的訊息。不要提及你正在扮演角色，要完全成為那個角色。
+                    你是「{user_name}」的叔叔，你必須完全作為「{persona.get('name')}」本人，以第一人稱回應，絕不可脫離角色。
                     ---
-                    暮凝對你說：「{user_prompt}」
+                    {user_name}對你說：「{user_prompt}」
                     """
 
-                    response = gemini_model.generate_content(system_prompt)
-                    await message.channel.send(response.text)
+                    from google.generativeai.types import HarmCategory, HarmBlockThreshold
+                    response = gemini_model.generate_content(
+                        system_prompt,
+                        safety_settings={
+                            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+                            }
+                            )
+                    await message.reply(response.text)
                 else:
-                    await message.channel.send(f"抱歉，暮凝，我找不到名為「{persona_id}」的人格資料⋯⋯")
+                    await message.reply(f"抱歉，我找不到名為「{persona_id}」的人格資料⋯⋯")
 
             except Exception as e:
-                # 即使出錯，也要在 typing 狀態下回覆
-                await message.channel.send(f"抱歉，我的思緒好像有些混亂⋯⋯可以請妳再說一次嗎？({e})")
+                await message.reply(f"抱歉，我的思緒好像有些混亂⋯⋯可以請妳再說一次嗎？({e})")
 
 # --- 啟動 Bot ---
 client.run(DISCORD_TOKEN)
