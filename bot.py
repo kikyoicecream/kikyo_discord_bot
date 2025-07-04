@@ -104,13 +104,14 @@ async def on_message(message):
                 persona = get_character_persona(persona_id)
 
                 if persona:
-                    # 更新 Bot 的暱稱，讓 "is typing..." 顯示正確的名字
-                    # 注意：這需要 Bot 擁有「管理暱稱」的權限
-                    try:
-                        await message.guild.me.edit(nick=persona.get('name', 'AI Bot'))
-                        print(f"成功將 Bot 暱稱更新為: {persona.get('name')}")
-                    except discord.Forbidden:
-                        print("錯誤：Bot 沒有權限更改自己的暱稱。請在伺服器設定中給予 '管理暱稱' 權限。")
+                    target_nick = persona.get('name')
+                    # 只有在目標暱稱和當前暱稱不同的時候，才執行修改
+                    if message.guild.me.nick != target_nick:
+                        try:
+                            await message.guild.me.edit(nick=target_nick)
+                            print(f"暱稱不符，成功將 Bot 暱稱從 '{message.guild.me.nick}' 更新為: '{target_nick}'")
+                        except discord.Forbidden:
+                            print(f"錯誤：Bot 沒有權限將暱稱更改為 '{target_nick}'。請在伺服器設定中給予 '管理暱稱' 權限。")
                     
                     system_prompt = f"""
                     現在，請你完全沉浸在以下角色中進行對話：
