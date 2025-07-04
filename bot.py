@@ -78,7 +78,7 @@ async def on_message(message):
     # 檢查訊息是否提及 Bot
     if client.user.mentioned_in(message):
         
-        persona_id = 'matsukoto' 
+        persona_id = 'shen_ze'
         user_prompt = message.content.replace(f'<@{client.user.id}>', '').strip()
 
         if 'persona:' in user_prompt.lower():
