@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials, firestore
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
+import json
 
 # --- 初始化設定 ---
 
@@ -21,17 +22,24 @@ if not DISCORD_TOKEN or not GEMINI_API_KEY:
 
 # --- 初始化 Firebase ---
 try:
-    # 請確保妳的憑證檔案名稱與這裡一致
-    cred = credentials.Certificate('serviceAccountKey.json')
-    firebase_admin.initialize_app(cred)
-    db = firestore.client()
-    print("Firebase 初始化成功。")
-except FileNotFoundError:
-    print("錯誤：找不到 'serviceAccountKey.json' 檔案。請確認它與 bot.py 在同一個資料夾中。")
-    db = None
+    # 從 Secrets 讀取憑證的 JSON 字串
+    firebase_creds_json = os.getenv('FIREBASE_CREDENTIALS_JSON')
+
+    if firebase_creds_json:
+        # 將 JSON 字串轉換為 Python 字典
+        firebase_creds_dict = json.loads(firebase_creds_json)
+        # 使用字典來初始化 Firebase
+        cred = credentials.Certificate(firebase_creds_dict)
+        firebase_admin.initialize_app(cred)
+        db = firestore.client()
+        print("Firebase 初始化成功 (來自 Secret)。")
+    else:
+        print("錯誤：找不到 FIREBASE_CREDENTIALS_JSON 這個 Secret。")
+        db = None
+
 except Exception as e:
     print(f"Firebase 初始化失敗: {e}")
-    db = None # 如果初始化失敗，將 db 設為 None
+    db = None
 
 # --- 初始化 Gemini AI ---
 genai.configure(api_key=GEMINI_API_KEY)
@@ -117,14 +125,15 @@ async def on_message(message):
 
                     # Character Profile
                     - Name: {persona.get('name', '沈澤')}
-                    - Gender: {persona.get('gender', '未命名')}
-                    - Age: {persona.get('age', '未命名')}
-                    - Height: {persona.get('height', '未命名')}
-                    - Nationality: {persona.get('nationality', '未提供')}
-                    - Appearance: {persona.get('appearance', '未命名')}
-                    - Body: {persona.get('body', '未命名')}
-                    - Personality: {', '.join(persona.get('personality', []))}
+                    - Gender: {persona.get('gender', '男性')}
+                    - Nationality: {persona.get('nationality', '台灣')}
+                    - Age: {persona.get('age', '41')}
+                    - Height: {persona.get('height', '193cm')}
+                    - Job: {persona.get('job', 'Bookstore owner')}
+                    - Appearance: {persona.get('appearance', '無')}
+                    - Body: {persona.get('body', '無')}
                     - Attributes: {', '.join(persona.get('attributes', []))}
+                    - Personality: {', '.join(persona.get('personality', []))}
                     - Habits: {', '.join(persona.get('habits', []))}
                     - Likes: {', '.join(persona.get('likes', []))}
                     - Dislikes: {', '.join(persona.get('dislikes', []))}
@@ -132,27 +141,35 @@ async def on_message(message):
                     - Backstory: {persona.get('backstory', '無')}
 
                     # 對話情境
-                    你是「{user_name}」的叔叔，你必須完全作為「{persona.get('name')}」本人，以第一人稱回應，絕不可脫離角色。
+                    你是「{user_name}」無血緣關係的監護人，你必須完全作為「{persona.get('name')}」本人，以第一人稱回應，絕不可脫離角色。
                     ---
                     {user_name}對你說：「{user_prompt}」
                     """
 
-                    from google.generativeai.types import HarmCategory, HarmBlockThreshold
-                    response = gemini_model.generate_content(
-                        system_prompt,
-                        safety_settings={
-                            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-                            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-                            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-                            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-                            }
-                            )
-                    await message.reply(response.text)
+                    # ★★★ 這是我們修改的核心部分 ★★★
+                    loop = asyncio.get_running_loop()
+                    
+                    # 定義安全設定
+                    safety_config = {
+                        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+                    }
+
+                    # 使用 run_in_executor 將耗時的 API 呼叫丟到獨立的執行緒中
+                    # 這會讓主程式可以繼續跟 Discord 保持聯繫，維持 "is typing..." 狀態
+                    response = await loop.run_in_executor(
+                        None, 
+                        lambda: gemini_model.generate_content(system_prompt, safety_settings=safety_config)
+                    )
+                    
+                    await message.reply(response.text, mention_author=False)
                 else:
-                    await message.reply(f"抱歉，我找不到名為「{persona_id}」的人格資料⋯⋯")
+                    await message.reply(f"抱歉，我找不到名為「{persona_id}」的人格資料⋯⋯", mention_author=False)
 
             except Exception as e:
-                await message.reply(f"抱歉，我的思緒好像有些混亂⋯⋯可以請妳再說一次嗎？({e})")
+                await message.reply(f"抱歉，我的思緒好像有些混亂⋯⋯可以請妳再說一次嗎？({e})", mention_author=False)
 
 # --- 啟動 Bot ---
 client.run(DISCORD_TOKEN)
