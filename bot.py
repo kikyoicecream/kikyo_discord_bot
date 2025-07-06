@@ -90,7 +90,7 @@ except Exception as e:
 
 # --- 初始化 Gemini AI ---
 genai.configure(api_key=GEMINI_API_KEY)
-gemini_model = genai.GenerativeModel('models/gemini-2.5-flash')
+gemini_model = genai.GenerativeModel('models/gemini-2.0-flash')
 
 # --- 輔助函式 ---
 def get_character_persona(persona_id):
@@ -178,7 +178,7 @@ async def extract_memory_summary(new_messages: list, current_user_name: str) -> 
 """
     
     try:
-        model = genai.GenerativeModel("models/gemini-2.5-flash")
+        model = genai.GenerativeModel("models/gemini-2.0-flash")
         response = await asyncio.to_thread(model.generate_content, prompt)
         result = response.text.strip() if response.text else ""
         return result if result != "無" else ""
