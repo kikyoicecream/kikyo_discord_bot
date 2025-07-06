@@ -163,24 +163,39 @@ async def extract_memory_summary(new_messages: list, current_user_name: str) -> 
     ])
     
     prompt = f"""
-你是一個記憶提取助手。請從下面的群組對話中，找出關於 {current_user_name} 的重要資訊，包括：
-1. 個人偏好、興趣愛好
-2. 重要的生活事件或經歷
-3. 情感狀態或性格特徵
-4. 與其他用戶的關係或互動
-5. 其他值得長期記住的事實
+你是一個記憶提取助手。請從下面的群組對話中，找出關於 {current_user_name} 的重要資訊，包括：個人偏好、興趣愛好、重要的生活事件或經歷、情感狀態或性格特徵、與其他用戶的關係或互動、其他值得長期記住的事實。
 
 對話內容：
 {messages_text}
 
-請只提取關於 {current_user_name} 的資訊，以簡潔的句子列出，每行一個重點。
+請只提取關於 {current_user_name} 的資訊，以簡潔的句子列出，每行一個重點，不要使用數字編號或任何格式符號。
 如果沒有值得記住的重要資訊，請回覆「無」。
+
+範例格式：
+喜歡看動漫
+住在台北
+最近在學習程式設計
+與其他用戶關係良好
 """
     
     try:
         model = genai.GenerativeModel("models/gemini-2.0-flash")
         response = await asyncio.to_thread(model.generate_content, prompt)
         result = response.text.strip() if response.text else ""
+        
+        # 額外清理：移除可能的數字編號
+        if result and result != "無":
+            lines = result.split('\n')
+            cleaned_lines = []
+            for line in lines:
+                # 移除行首的數字編號（如 "1. ", "2. " 等）
+                cleaned_line = re.sub(r'^\d+\.\s*', '', line.strip())
+                # 移除行首的破折號或其他符號
+                cleaned_line = re.sub(r'^[-•*]\s*', '', cleaned_line)
+                if cleaned_line:
+                    cleaned_lines.append(cleaned_line)
+            result = '\n'.join(cleaned_lines)
+        
         return result if result != "無" else ""
     except Exception as e:
         print(f"記憶摘要提取失敗：{e}")
