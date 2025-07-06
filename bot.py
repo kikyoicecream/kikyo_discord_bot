@@ -141,8 +141,8 @@ async def on_message(message):
                             print("Bot 沒有權限更改暱稱")
                             await message.channel.send("我沒辦法更改暱稱，可能因為權限不足，請確認我在伺服器的角色設定。")
 
-                    channel_id = message.channel.id
-                    history = conversation_histories.get(channel_id, [])
+                    user_key = f"{message.channel.id}:{message.author.id}"
+                    history = conversation_histories.get(user_key, [])
 
                     formatted_history = "\n".join(
                         f"{user_name if msg['role'] == 'user' else bot_name}: {msg['parts'][0]}"
@@ -212,7 +212,7 @@ async def on_message(message):
                         if len(history) > 5:
                             history = history[-5:]
 
-                        conversation_histories[channel_id] = history
+                        conversation_histories[user_key] = history
 
                         await message.reply(model_reply, mention_author=False)
                         print(f"✅ 成功回應 {message.author.display_name}：{model_reply[:20]}...")
