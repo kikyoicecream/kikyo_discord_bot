@@ -25,6 +25,11 @@ active_users = {}  # 追蹤每個頻道的活躍用戶
 MAX_CONVERSATIONS = 50
 MAX_HISTORY_LENGTH = 15  # 增加到15條以便更好處理群聊
 ACTIVE_USER_TIMEOUT = 300  # 5分鐘後認為用戶不活躍
+MEMORY_CONSOLIDATION_THRESHOLD = 20  # 當記憶數量超過20條時觸發整理
+MEMORY_CONSOLIDATION_INTERVAL = 86400  # 每24小時強制整理一次
+
+# 追蹤每個用戶的上次整理時間
+last_consolidation_time = {}
 
 def cleanup_old_conversations():
     if len(conversation_histories) > MAX_CONVERSATIONS:
@@ -127,7 +132,142 @@ def get_multiple_user_memories(user_ids: list) -> dict:
     """批量獲取多個用戶的記憶"""
     if not db:
         return {}
+
+async def consolidate_user_memories(user_id: str) -> bool:
+    """整理用戶的記憶，將相似和重複的記憶合併"""
+    if not db:
+        return False
     
+    try:
+        # 獲取用戶的現有記憶
+        doc_ref = db.collection("users").document(user_id)
+        doc = doc_ref.get()
+        if not doc.exists:
+            return False
+        
+        existing_memories = doc.to_dict().get("memories", [])
+        if len(existing_memories) < 10:  # 記憶太少不需要整理
+            return False
+        
+        # 準備整理提示詞
+        memories_text = "\n".join([f"- {memory}" for memory in existing_memories])
+        
+        consolidation_prompt = f"""
+你是一個記憶整理助手。請將以下用戶的記憶整理成簡潔的摘要，去除重複和過於細節的內容。
+
+現有記憶：
+{memories_text}
+
+請整理成以下格式的摘要，每個主題用一行表達：
+1. 合併相似的記憶（例如：多次提到的興趣愛好、關係等）
+2. 去除重複的資訊
+3. 保留重要的個人特徵和事件
+4. 使用簡潔的語句
+5. 不要使用數字編號或符號，每行一個重點
+6. 最多保留15個最重要的記憶點
+
+範例格式：
+喜歡動漫和遊戲
+正在學習程式設計
+與 KK 有密切關係
+住在台北
+性格開朗活潑
+
+請直接輸出整理後的記憶，不要有任何前綴說明：
+"""
+        
+        # 使用 Gemini 進行整理
+        model = genai.GenerativeModel("models/gemini-2.0-flash")
+        response = await asyncio.to_thread(model.generate_content, consolidation_prompt)
+        consolidated_text = response.text.strip() if response.text else ""
+        
+        if not consolidated_text:
+            return False
+        
+        # 清理整理後的記憶
+        consolidated_lines = []
+        for line in consolidated_text.split('\n'):
+            # 移除可能的數字編號和符號
+            cleaned_line = re.sub(r'^\d+\.\s*', '', line.strip())
+            cleaned_line = re.sub(r'^[-•*]\s*', '', cleaned_line)
+            if cleaned_line and len(cleaned_line) > 3:  # 過濾太短的內容
+                consolidated_lines.append(cleaned_line)
+        
+        if not consolidated_lines:
+            return False
+        
+        # 更新 Firebase
+        doc_ref.set({
+            "memories": consolidated_lines,
+            "last_updated": firestore.SERVER_TIMESTAMP,
+            "last_consolidated": firestore.SERVER_TIMESTAMP
+        }, merge=True)
+        
+        print(f"已為用戶 {user_id} 整理記憶：{len(existing_memories)} -> {len(consolidated_lines)}")
+        
+        # 更新整理時間
+        last_consolidation_time[user_id] = datetime.now()
+        return True
+        
+    except Exception as e:
+        print(f"記憶整理失敗：{e}")
+        return False
+
+async def should_consolidate_memories(user_id: str) -> bool:
+    """判斷是否需要整理記憶"""
+    if not db:
+        return False
+    
+    try:
+        # 檢查記憶數量
+        doc_ref = db.collection("users").document(user_id)
+        doc = doc_ref.get()
+        if not doc.exists:
+            return False
+        
+        memories = doc.to_dict().get("memories", [])
+        
+        # 如果記憶數量超過閾值，需要整理
+        if len(memories) >= MEMORY_CONSOLIDATION_THRESHOLD:
+            return True
+        
+        # 檢查時間間隔
+        last_time = last_consolidation_time.get(user_id)
+        if last_time:
+            time_diff = datetime.now() - last_time
+            if time_diff.total_seconds() >= MEMORY_CONSOLIDATION_INTERVAL:
+                return True
+        else:
+            # 檢查 Firebase 中的上次整理時間
+            data = doc.to_dict()
+            if "last_consolidated" in data:
+                last_consolidated = data["last_consolidated"]
+                if isinstance(last_consolidated, datetime):
+                    time_diff = datetime.now() - last_consolidated
+                    if time_diff.total_seconds() >= MEMORY_CONSOLIDATION_INTERVAL:
+                        return True
+            else:
+                # 從未整理過，如果有足夠記憶就整理
+                return len(memories) >= 10
+        
+        return False
+        
+    except Exception as e:
+        print(f"檢查整理需求失敗：{e}")
+        return False
+
+async def handle_consolidate_command(message, user_id: str):
+    """處理手動整理記憶的命令"""
+    try:
+        success = await consolidate_user_memories(user_id)
+        if success:
+            await message.reply("✅ 記憶整理完成！", mention_author=False)
+        else:
+            await message.reply("❌ 記憶整理失敗或無需整理", mention_author=False)
+    except Exception as e:
+        await message.reply("❌ 記憶整理過程中發生錯誤", mention_author=False)
+        print(f"手動整理記憶失敗：{e}")
+
     memories = {}
     for user_id in user_ids:
         try:
@@ -202,7 +342,7 @@ async def extract_memory_summary(new_messages: list, current_user_name: str) -> 
         return ""
 
 async def save_memory_to_firebase(user_id: str, summary: str):
-    """將新的記憶摘要保存到 Firebase"""
+    """將新的記憶摘要保存到 Firebase，並在需要時觸發整理"""
     if not db or not summary:
         return
     try:
@@ -212,21 +352,42 @@ async def save_memory_to_firebase(user_id: str, summary: str):
         
         new_points = [line.strip() for line in summary.split("\n") if line.strip()]
         
+        # 改進的去重邏輯
         unique_new_points = []
         for point in new_points:
-            if not any(point.lower() in existing_memory.lower() for existing_memory in existing):
+            # 更嚴格的重複檢查
+            is_duplicate = False
+            for existing_memory in existing:
+                # 計算相似度（簡單的字符匹配）
+                similarity = len(set(point.lower().split()) & set(existing_memory.lower().split()))
+                if similarity >= 2 and len(point.split()) <= 6:  # 短句子相似度高就是重複
+                    is_duplicate = True
+                    break
+                elif point.lower() in existing_memory.lower() or existing_memory.lower() in point.lower():
+                    is_duplicate = True
+                    break
+            
+            if not is_duplicate:
                 unique_new_points.append(point)
         
         if unique_new_points:
             all_memories = existing + unique_new_points
-            if len(all_memories) > 50:
-                all_memories = all_memories[-50:]
+            
+            # 臨時限制數量（整理前）
+            if len(all_memories) > 30:
+                all_memories = all_memories[-30:]
             
             doc_ref.set({
                 "memories": all_memories,
                 "last_updated": firestore.SERVER_TIMESTAMP
             }, merge=True)
             print(f"已為用戶 {user_id} 保存 {len(unique_new_points)} 條新記憶")
+            
+            # 檢查是否需要整理記憶
+            if await should_consolidate_memories(user_id):
+                print(f"觸發用戶 {user_id} 的記憶整理")
+                await consolidate_user_memories(user_id)
+                
     except Exception as e:
         print(f"寫入 Firebase 記憶失敗：{e}")
 
