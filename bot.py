@@ -10,6 +10,8 @@ import json
 import google.generativeai.types as genai_types
 import re
 import traceback
+from google.cloud import firestore  # 要確認你 firebase_admin 初始化過
+
 
 # --- Discord Bot 設定 ---
 intents = discord.Intents.default()
@@ -31,28 +33,26 @@ def cleanup_old_conversations():
             del conversation_histories[channel_id]
 
 # --- 初始化設定 ---
-
-# 載入 .env 檔案中的環境變數
 load_dotenv()
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 FIREBASE_CREDENTIALS_JSON = os.getenv('FIREBASE_CREDENTIALS_JSON')
 
-# 檢查 Token 和 API Key 是否成功載入
 if not DISCORD_TOKEN or not GEMINI_API_KEY:
     print("錯誤：請在 .env 檔案中設定 DISCORD_TOKEN 和 GEMINI_API_KEY")
     exit()
 
 # --- 初始化 Firebase ---
 try:
-    if FIREBASE_CREDENTIALS_JSON:
-        firebase_creds_dict = json.loads(FIREBASE_CREDENTIALS_JSON)
+    firebase_creds_json = os.getenv('FIREBASE_CREDENTIALS_JSON')
+    if firebase_creds_json:
+        firebase_creds_dict = json.loads(firebase_creds_json)
         cred = credentials.Certificate(firebase_creds_dict)
         firebase_admin.initialize_app(cred)
         db = firestore.client()
-        print("Firebase 初始化成功")
+        print("Firebase 初始化成功 (來自 Secret)。")
     else:
-        print("錯誤：找不到 FIREBASE_CREDENTIALS_JSON 環境變數")
+        print("錯誤：找不到 FIREBASE_CREDENTIALS_JSON 這個 Secret。")
         db = None
 except Exception as e:
     print(f"Firebase 初始化失敗: {e}")
@@ -60,7 +60,7 @@ except Exception as e:
 
 # --- 初始化 Gemini AI ---
 genai.configure(api_key=GEMINI_API_KEY)
-gemini_model = genai.GenerativeModel('models/gemini-2.0-flash')
+gemini_model = genai.GenerativeModel('models/gemini-2.5-flash')
 
 # --- 輔助函式 ---
 def get_character_persona(persona_id):
@@ -79,27 +79,57 @@ def get_character_persona(persona_id):
         print(f"讀取 Firestore 時發生錯誤: {e}")
         return None
 
+def get_user_memories(user_id: str):
+    try:
+        doc_ref = db.collection("users").document(user_id)
+        doc = doc_ref.get()
+        if doc.exists:
+            return doc.to_dict().get("memories", [])
+        return []
+    except Exception as e:
+        print(f"讀取記憶失敗：{e}")
+        return []
+
+async def extract_memory_summary(history_text: str) -> str:
+    prompt = f"""
+你是一個記憶提取助手。請從下面的對話中，找出可長期記住的事實或情緒，並以一行一句的方式列出：
+{history_text}
+"""
+    model = genai.GenerativeModel("models/gemini-2.5-flash")
+    response = await asyncio.to_thread(model.generate_content, prompt)
+    return response.text.strip() if response.text else ""
+
+async def save_memory_to_firebase(user_id: str, summary: str):
+    if not db:
+        return
+    try:
+        doc_ref = db.collection("users").document(user_id)
+        user_doc = doc_ref.get()
+        existing = user_doc.to_dict().get("memories", []) if user_doc.exists else []
+        new_points = [line for line in summary.split("\n") if line and line not in existing]
+        if new_points:
+            doc_ref.set({
+                "memories": firestore.ArrayUnion(new_points),
+                "last_updated": firestore.SERVER_TIMESTAMP
+            }, merge=True)
+    except Exception as e:
+        print(f"寫入 Firebase 記憶失敗：{e}")
+
 def format_character_profile(persona: dict) -> str:
     profile_lines = ["# Character Profile"]
     for key, value in persona.items():
-        # 將 key 轉為首字母大寫 + 替換底線
         key_formatted = key.replace("_", " ").capitalize()
-
-        # 如果是 list，就 join 起來
         if isinstance(value, list):
             value = ", ".join(value)
         elif value is None or value == "":
-            continue  # 跳過空值
-
+            continue
         profile_lines.append(f"- {key_formatted}: {value}")
-
     return "\n".join(profile_lines)
 
 # --- Bot 事件處理 ---
 @client.event
 async def on_ready():
     print(f'Bot 已成功登入為 {client.user}')
-    #await client.change_presence(activity=discord.Game(name="叔叔幫你準備早餐好嗎？"))
 
 @client.event
 async def on_message(message):
@@ -128,7 +158,6 @@ async def on_message(message):
         async with message.channel.typing():
             try:
                 persona = get_character_persona(persona_id)
-
                 if persona:
                     user_name = message.author.display_name
                     target_nick = persona.get('name')
@@ -137,68 +166,54 @@ async def on_message(message):
                     channel_id = message.channel.id
                     history = conversation_histories.get(channel_id, [])
 
-                    # 把這次使用者的發言加到歷史中，並標註名字
                     history.append({
                         "role": "user",
-                        "name": message.author.display_name,
+                        "name": user_name,
                         "parts": [user_prompt]
                     })
 
                     gemini_history = [
                         {"role": msg["role"], "parts": msg["parts"]}
                         for msg in history
-                        ]
+                    ]
 
                     formatted_history = "\n".join(
                         f"{msg.get('name', '某人')}: {msg['parts'][0]}"
                         for msg in history
                     )
 
-                    # 將最新歷史儲存回記憶體
                     conversation_histories[channel_id] = history
-                    
-                    if message.guild.me.nick != target_nick:
-                        try:
-                            await message.guild.me.edit(nick=target_nick)
-                        except discord.Forbidden:
-                            print("Bot 沒有權限更改暱稱")
-                            await message.channel.send("我沒辦法更改暱稱，可能因為權限不足，請確認我在伺服器的角色設定。")
+
+                    user_memories = get_user_memories(str(message.author.id))
+                    formatted_memories = "\n".join(f"- {m}" for m in user_memories)
+
+                    character_profile = format_character_profile(persona)
 
                     system_prompt = f"""
+
+                     You are {bot_name}, engaging in a group conversation with multiple users. Remain fully in character and speak in the first person at all times. Respond with genuine emotions and reactions to each individual speaker. Never break character.
 
                     # Character Profile
                     {format_character_profile(persona)}
 
-                    # 過去的對話紀錄
+                    # 長期記憶
                     {formatted_history}
 
-                    # 對話情境
-                    You are {bot_name}, engaging in a group conversation with multiple users. Remain fully in character and speak in the first person at all times. Respond with genuine emotions and reactions to each individual speaker. Never break character.
-                    
                     # 現在的輸入
-                    {message.author.display_name}: 「{user_prompt}」
+                    {user_name}: 「{user_prompt}」
                     {bot_name}:
                     """
 
-                    # 建立包含歷史的聊天 session
                     chat_session = gemini_model.start_chat(history=gemini_history)
 
-                    # 定義生成設定，限制最大輸出 Token 數量
-                    generation_config = genai_types.GenerationConfig(
-                        max_output_tokens=persona.get('max_output_tokens', 1024),
-                        temperature=persona.get('temperature', 0.9),
-                        top_p=persona.get('top_p', 1),
-                        top_k=persona.get('top_k', 40)
-                    )
-                    
-                    # 定義安全設定
+                    generation_config = genai_types.GenerationConfig(max_output_tokens=1024)
                     safety_settings = [
                         {"category": HarmCategory.HARM_CATEGORY_HARASSMENT, "threshold": HarmBlockThreshold.BLOCK_NONE},
                         {"category": HarmCategory.HARM_CATEGORY_HATE_SPEECH, "threshold": HarmBlockThreshold.BLOCK_NONE},
                         {"category": HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, "threshold": HarmBlockThreshold.BLOCK_NONE},
                         {"category": HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, "threshold": HarmBlockThreshold.BLOCK_NONE},
                     ]
-                    
+
                     response = await asyncio.to_thread(
                         chat_session.send_message,
                         system_prompt,
@@ -206,39 +221,26 @@ async def on_message(message):
                         safety_settings=safety_settings
                     )
 
-                    model_reply = None
-                    # 安全處理 Gemini 回應
+                    model_reply = response.text or "......"
+                    history.append({"role": "model", "parts": [model_reply]})
+                    if len(history) > 10:
+                        history = history[-10:]
+
+                    conversation_histories[channel_id] = history
+
+                    await message.reply(model_reply, mention_author=False)
+
                     try:
-                        if not response.candidates:
-                            print("Gemini 沒有回應候選內容")
-                        elif not response.candidates[0].content.parts:
-                            finish_reason = response.candidates[0].finish_reason
-                            print(f"Gemini 回應為空，finish_reason: {finish_reason}")
-                        else:
-                            model_reply = response.text
+                        summary = await extract_memory_summary(formatted_history)
+                        await save_memory_to_firebase(str(message.author.id), summary)
                     except Exception as e:
-                        print(f"Gemini 回應解析失敗：{e}")
-                        print(traceback.format_exc())
+                        print(f"記憶摘要失敗：{e}")
 
-                    # 加入對話歷史
-                    if model_reply:
-                        history.append({'role': 'user', 'parts': [user_prompt]})
-                        history.append({'role': 'model', 'parts': [model_reply]})
-
-                        if len(history) > 5:
-                            history = history[-5:]
-
-                        conversation_histories[channel_id] = history
-
-                        await message.reply(model_reply, mention_author=False)
-                        print(f"✅ 成功回應 {message.author.display_name}：{model_reply[:20]}...")
-                    else:
-                        print("未產生 model_reply，跳過回覆。")
-                    
+                else:
+                    await message.reply(f"抱歉，我找不到名為「{persona_id}」的人格資料⋯⋯", mention_author=False)
             except Exception as e:
-                await message.reply("抱歉，我的思緒好像有些混亂⋯⋯可以請妳再說一次嗎？", mention_author=False)
-                print(f"錯誤細節：{e}")
+                await message.reply(f"抱歉，我的思緒好像有些混亂⋯⋯可以請妳再說一次嗎？", mention_author=False)
                 print(traceback.format_exc())
-                    
+
 # --- 啟動 Bot ---
 client.run(DISCORD_TOKEN)
