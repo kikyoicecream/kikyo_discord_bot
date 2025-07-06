@@ -17,18 +17,18 @@ intents = discord.Intents.default()
 intents.message_content = True
 client = discord.Client(intents=intents)
 
-# 對話歷史和活躍用戶追蹤
+# 對話歷史和活躍使用者追蹤
 conversation_histories = {}
-active_users = {}  # 追蹤每個頻道的活躍用戶
+active_users = {}  # 追蹤每個頻道的活躍使用者
 
 # 記憶體管理
 MAX_CONVERSATIONS = 50
 MAX_HISTORY_LENGTH = 15  # 增加到15條以便更好處理群聊
-ACTIVE_USER_TIMEOUT = 300  # 5分鐘後認為用戶不活躍
+ACTIVE_USER_TIMEOUT = 300  # 5分鐘後認為使用者不活躍
 MEMORY_CONSOLIDATION_THRESHOLD = 20  # 當記憶數量超過20條時觸發整理
 MEMORY_CONSOLIDATION_INTERVAL = 86400  # 每24小時強制整理一次
 
-# 追蹤每個用戶的上次整理時間
+# 追蹤每個使用者的上次整理時間
 last_consolidation_time = {}
 
 def cleanup_old_conversations():
@@ -40,7 +40,7 @@ def cleanup_old_conversations():
                 del active_users[channel_id]
 
 def update_active_users(channel_id: int, user_id: str, user_name: str):
-    """更新頻道中的活躍用戶列表"""
+    """更新頻道中的活躍使用者列表"""
     if channel_id not in active_users:
         active_users[channel_id] = {}
     
@@ -49,7 +49,7 @@ def update_active_users(channel_id: int, user_id: str, user_name: str):
         'last_active': datetime.now()
     }
     
-    # 清理不活躍的用戶
+    # 清理不活躍的使用者
     cutoff_time = datetime.now() - timedelta(seconds=ACTIVE_USER_TIMEOUT)
     active_users[channel_id] = {
         uid: info for uid, info in active_users[channel_id].items()
@@ -57,7 +57,7 @@ def update_active_users(channel_id: int, user_id: str, user_name: str):
     }
 
 def get_active_users_list(channel_id: int) -> list:
-    """獲取頻道中的活躍用戶列表"""
+    """獲取頻道中的活躍使用者列表"""
     if channel_id not in active_users:
         return []
     
@@ -115,7 +115,7 @@ def get_character_persona(persona_id):
         return None
 
 def get_user_memories(user_id: str):
-    """從 Firebase 讀取用戶的長期記憶"""
+    """從 Firebase 讀取使用者的長期記憶"""
     if not db:
         return []
     try:
@@ -129,7 +129,7 @@ def get_user_memories(user_id: str):
         return []
 
 def get_multiple_user_memories(user_ids: list) -> dict:
-    """批量獲取多個用戶的記憶"""
+    """批量獲取多個使用者的記憶"""
     if not db:
         return {}
     
@@ -143,17 +143,17 @@ def get_multiple_user_memories(user_ids: list) -> dict:
                 if user_memories:
                     memories[user_id] = user_memories
         except Exception as e:
-            print(f"讀取用戶 {user_id} 記憶失敗：{e}")
+            print(f"讀取使用者 {user_id} 記憶失敗：{e}")
     
     return memories
 
 async def consolidate_user_memories(user_id: str) -> bool:
-    """整理用戶的記憶，將相似和重複的記憶合併"""
+    """整理使用者的記憶，將相似和重複的記憶合併"""
     if not db:
         return False
     
     try:
-        # 獲取用戶的現有記憶
+        # 獲取使用者的現有記憶
         doc_ref = db.collection("users").document(user_id)
         doc = doc_ref.get()
         if not doc.exists:
@@ -167,7 +167,7 @@ async def consolidate_user_memories(user_id: str) -> bool:
         memories_text = "\n".join([f"- {memory}" for memory in existing_memories])
         
         consolidation_prompt = f"""
-你是一個記憶整理助手。請將以下用戶的記憶整理成簡潔的摘要，去除重複和過於細節的內容。
+你是一個記憶整理助手。請將以下使用者的記憶整理成簡潔的摘要，去除重複和過於細節的內容。
 
 現有記憶：
 {memories_text}
@@ -177,17 +177,10 @@ async def consolidate_user_memories(user_id: str) -> bool:
 2. 去除重複的資訊
 3. 保留重要的個人特徵和事件
 4. 使用簡潔的語句
-5. 不要使用數字編號或符號，每行一個重點
+5. 避免使用數字編號或符號，每行一個重點
 6. 最多保留15個最重要的記憶點
 
-範例格式：
-喜歡動漫和遊戲
-正在學習程式設計
-與 KK 有密切關係
-住在台北
-性格開朗活潑
-
-請直接輸出整理後的記憶，不要有任何前綴說明：
+請直接輸出整理後的記憶，不需任何前綴說明
 """
         
         # 使用 Gemini 進行整理
@@ -217,7 +210,7 @@ async def consolidate_user_memories(user_id: str) -> bool:
             "last_consolidated": firestore.SERVER_TIMESTAMP
         }, merge=True)
         
-        print(f"已為用戶 {user_id} 整理記憶：{len(existing_memories)} -> {len(consolidated_lines)}")
+        print(f"已為使用者 {user_id} 整理記憶：{len(existing_memories)} -> {len(consolidated_lines)}")
         
         # 更新整理時間
         last_consolidation_time[user_id] = datetime.now()
@@ -283,11 +276,11 @@ async def handle_consolidate_command(message, user_id: str):
         print(f"手動整理記憶失敗：{e}")
 
 async def extract_memory_summary(new_messages: list, current_user_name: str) -> str:
-    """從新的對話消息中提取關於當前用戶的記憶摘要"""
+    """從新的對話消息中提取關於當前使用者的記憶摘要"""
     if not new_messages:
         return ""
     
-    # 過濾出當前用戶的消息
+    # 過濾出當前使用者的消息
     user_messages = [
         msg for msg in new_messages 
         if msg.get('name') == current_user_name and msg.get('role') == 'user'
@@ -303,7 +296,7 @@ async def extract_memory_summary(new_messages: list, current_user_name: str) -> 
     ])
     
     prompt = f"""
-你是一個記憶提取助手。請從下面的群組對話中，找出關於 {current_user_name} 的重要資訊，包括：個人偏好、興趣愛好、重要的生活事件或經歷、情感狀態或性格特徵、與其他用戶的關係或互動、其他值得長期記住的事實。
+你是一個記憶提取助手。請從下面的對話中，找出關於 {current_user_name} 的重要資訊，包括：個人偏好、興趣愛好、重要的生活事件或經歷、情感狀態或性格特徵、與其他使用者的關係或互動、其他值得長期記住的事實。
 
 對話內容：
 {messages_text}
@@ -315,7 +308,7 @@ async def extract_memory_summary(new_messages: list, current_user_name: str) -> 
 喜歡看動漫
 住在台北
 最近在學習程式設計
-與其他用戶關係良好
+與其他使用者ㄉ關係良好
 """
     
     try:
@@ -381,11 +374,11 @@ async def save_memory_to_firebase(user_id: str, summary: str):
                 "memories": all_memories,
                 "last_updated": firestore.SERVER_TIMESTAMP
             }, merge=True)
-            print(f"已為用戶 {user_id} 保存 {len(unique_new_points)} 條新記憶")
+            print(f"已為使用者 {user_id} 保存 {len(unique_new_points)} 條新記憶")
             
             # 檢查是否需要整理記憶
             if await should_consolidate_memories(user_id):
-                print(f"觸發用戶 {user_id} 的記憶整理")
+                print(f"觸發使用者 {user_id} 的記憶整理")
                 await consolidate_user_memories(user_id)
                 
     except Exception as e:
@@ -404,14 +397,14 @@ def format_character_profile(persona: dict) -> str:
     return "\n".join(profile_lines)
 
 def format_group_memories(memories_dict: dict, active_users_dict: dict) -> str:
-    """格式化群組中活躍用戶的記憶"""
+    """格式化群組中活躍使用者的記憶"""
     if not memories_dict:
-        return "目前沒有關於其他用戶的記憶記錄"
+        return "目前沒有關於其他使用者的記憶記錄"
     
     formatted_memories = []
     for user_id, memories in memories_dict.items():
-        # 找到用戶名稱
-        user_name = "未知用戶"
+        # 找到使用者名稱
+        user_name = "未知使用者"
         for uid, info in active_users_dict.items():
             if uid == user_id:
                 user_name = info['name']
@@ -422,7 +415,7 @@ def format_group_memories(memories_dict: dict, active_users_dict: dict) -> str:
             for memory in memories[-5:]:  # 只顯示最近5條記憶
                 formatted_memories.append(f"  - {memory}")
     
-    return "\n".join(formatted_memories) if formatted_memories else "目前沒有關於其他用戶的記憶記錄"
+    return "\n".join(formatted_memories) if formatted_memories else "目前沒有關於其他使用者的記憶記錄"
 
 # --- Bot 事件處理 ---
 @client.event
@@ -464,18 +457,18 @@ async def on_message(message):
                     target_nick = persona.get('name')
                     bot_name = target_nick or "沈澤"
 
-                    # 更新活躍用戶
+                    # 更新活躍使用者
                     update_active_users(channel_id, user_id, user_name)
                     
                     # 獲取對話歷史
                     history = conversation_histories.get(channel_id, [])
                     history_length_before = len(history)
 
-                    # 添加用戶消息
+                    # 添加使用者消息
                     history.append({
                         "role": "user",
                         "name": user_name,
-                        "user_id": user_id,  # 添加用戶ID
+                        "user_id": user_id,  # 添加使用者ID
                         "parts": [user_prompt]
                     })
 
@@ -485,17 +478,17 @@ async def on_message(message):
                         for msg in history
                     ]
 
-                    # 獲取當前用戶的記憶
+                    # 獲取當前使用者的記憶
                     user_memories = get_user_memories(user_id)
                     current_user_memories = "\n".join(f"- {m}" for m in user_memories) if user_memories else "尚無記錄"
 
-                    # 獲取群組中其他活躍用戶的記憶
+                    # 獲取群組中其他活躍使用者的記憶
                     active_users_in_channel = active_users.get(channel_id, {})
                     other_user_ids = [uid for uid in active_users_in_channel.keys() if uid != user_id]
                     group_memories = get_multiple_user_memories(other_user_ids)
                     formatted_group_memories = format_group_memories(group_memories, active_users_in_channel)
 
-                    # 獲取活躍用戶列表
+                    # 獲取活躍使用者列表
                     active_users_list = get_active_users_list(channel_id)
                     active_users_text = ", ".join(active_users_list) if active_users_list else "只有你"
 
@@ -510,19 +503,19 @@ async def on_message(message):
 
                     # 構建系統提示詞
                     system_prompt = f"""
-你是 {bot_name}，正在參與一個群組對話。請始終保持角色設定，以第一人稱回應，展現真實的情感和反應。
+你是 {bot_name}，正在參與一個多人對話。請始終保持角色設定，以第一人稱回應，展現真實的情感和反應。
 
 ## 角色設定
 {character_profile}
 
 ## 群組對話情況
-- 目前活躍的用戶: {active_users_text}
+- 目前活躍的使用者: {active_users_text}
 - 剛剛與你對話的是: {user_name}
 
 ## 關於 {user_name} 的長期記憶
 {current_user_memories}
 
-## 關於群組中其他用戶的記憶
+## 關於群組中其他使用者的記憶
 {formatted_group_memories}
 
 ## 近期對話脈絡
@@ -532,8 +525,8 @@ async def on_message(message):
 [{user_name}]: {user_prompt}
 
 請以 {bot_name} 的身份回應，注意：
-1. 要意識到這是群組對話，可能有多人參與
-2. 可以根據記憶和對話內容自然地提及其他用戶
+1. 要意識到這是多人對話，中途有可能有其他人加入或是退出對話
+2. 可以根據記憶和對話內容自然地提及其他使用者
 3. 回應要符合你的角色設定
 4. 保持對話的連貫性和真實感
 """
@@ -572,10 +565,10 @@ async def on_message(message):
                     conversation_histories[channel_id] = history
                     cleanup_old_conversations()
 
-                    # 回覆用戶
+                    # 回覆使用者
                     await message.reply(model_reply, mention_author=False)
 
-                    # 記憶處理：只處理與當前用戶相關的記憶
+                    # 記憶處理：只處理與當前使用者相關的記憶
                     try:
                         new_messages = history[history_length_before:]
                         if len(new_messages) >= 2:
