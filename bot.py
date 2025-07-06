@@ -152,9 +152,6 @@ async def on_message(message):
                         for msg in history
                     ]
 
-                    # 傳給 Gemini 的聊天 session
-                    chat_session = gemini_model.start_chat(history=gemini_history)
-
                     formatted_history = "\n".join(
                     f"{msg.get('name', '某人')}: {msg['parts'][0]}"
                     for msg in history
@@ -186,7 +183,7 @@ async def on_message(message):
                     """
 
                     # 建立包含歷史的聊天 session
-                    chat_session = gemini_model.start_chat(history=history)
+                    chat_session = gemini_model.start_chat(history=gemini_history)
 
                     # 定義生成設定，限制最大輸出 Token 數量
                     generation_config = genai_types.GenerationConfig(
