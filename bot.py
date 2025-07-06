@@ -222,7 +222,7 @@ async def on_message(message):
                         if len(history) > 5:
                             history = history[-5:]
 
-                        conversation_histories[user_key] = history
+                        conversation_histories[channel_id] = history
 
                         await message.reply(model_reply, mention_author=False)
                         print(f"✅ 成功回應 {message.author.display_name}：{model_reply[:20]}...")
