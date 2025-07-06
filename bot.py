@@ -241,7 +241,12 @@ async def should_consolidate_memories(user_id: str) -> bool:
         # 檢查時間間隔
         last_time = last_consolidation_time.get(user_id)
         if last_time:
-            time_diff = datetime.now() - last_time
+            # 移除時區信息進行比較
+            current_time = datetime.now()
+            if last_time.tzinfo is not None:
+                last_time = last_time.replace(tzinfo=None)
+            
+            time_diff = current_time - last_time
             if time_diff.total_seconds() >= MEMORY_CONSOLIDATION_INTERVAL:
                 return True
         else:
@@ -249,8 +254,22 @@ async def should_consolidate_memories(user_id: str) -> bool:
             data = doc.to_dict()
             if "last_consolidated" in data:
                 last_consolidated = data["last_consolidated"]
-                if isinstance(last_consolidated, datetime):
-                    time_diff = datetime.now() - last_consolidated
+                if last_consolidated:
+                    # 轉換為無時區的 datetime
+                    if hasattr(last_consolidated, 'timestamp'):
+                        # Firestore Timestamp 對象
+                        last_consolidated_naive = datetime.fromtimestamp(
+                            last_consolidated.timestamp()
+                        )
+                    elif isinstance(last_consolidated, datetime):
+                        # 移除時區信息
+                        last_consolidated_naive = last_consolidated.replace(tzinfo=None)
+                    else:
+                        # 無法識別的時間格式，跳過時間檢查
+                        return len(memories) >= 10
+                    
+                    current_time = datetime.now()
+                    time_diff = current_time - last_consolidated_naive
                     if time_diff.total_seconds() >= MEMORY_CONSOLIDATION_INTERVAL:
                         return True
             else:
