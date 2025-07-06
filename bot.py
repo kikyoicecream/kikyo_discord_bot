@@ -132,7 +132,25 @@ async def on_message(message):
                 if persona:
                     user_name = message.author.display_name
                     target_nick = persona.get('name')
-                    bot_name = target_nick or "沈澤" 
+                    bot_name = target_nick or "沈澤"
+
+                    channel_id = message.channel.id
+                    history = conversation_histories.get(channel_id, [])
+
+                    # 把這次使用者的發言加到歷史中，並標註名字
+                    history.append({
+                        "role": "user",
+                        "name": message.author.display_name,
+                        "parts": [user_prompt]
+                    })
+
+                    formatted_history = "\n".join(
+                    f"{msg.get('name', '某人')}: {msg['parts'][0]}"
+                    for msg in history
+                    )
+
+                    # 將最新歷史儲存回記憶體
+                    conversation_histories[channel_id] = history
                     
                     if message.guild.me.nick != target_nick:
                         try:
@@ -141,14 +159,6 @@ async def on_message(message):
                             print("Bot 沒有權限更改暱稱")
                             await message.channel.send("我沒辦法更改暱稱，可能因為權限不足，請確認我在伺服器的角色設定。")
 
-                    user_key = f"{message.channel.id}:{message.author.id}"
-                    history = conversation_histories.get(user_key, [])
-
-                    formatted_history = "\n".join(
-                        f"{user_name if msg['role'] == 'user' else bot_name}: {msg['parts'][0]}"
-                        for msg in history
-                    )
-                    
                     system_prompt = f"""
 
                     # Character Profile
