@@ -132,6 +132,20 @@ def get_multiple_user_memories(user_ids: list) -> dict:
     """批量獲取多個用戶的記憶"""
     if not db:
         return {}
+    
+    memories = {}
+    for user_id in user_ids:
+        try:
+            doc_ref = db.collection("users").document(user_id)
+            doc = doc_ref.get()
+            if doc.exists:
+                user_memories = doc.to_dict().get("memories", [])
+                if user_memories:
+                    memories[user_id] = user_memories
+        except Exception as e:
+            print(f"讀取用戶 {user_id} 記憶失敗：{e}")
+    
+    return memories
 
 async def consolidate_user_memories(user_id: str) -> bool:
     """整理用戶的記憶，將相似和重複的記憶合併"""
@@ -267,20 +281,6 @@ async def handle_consolidate_command(message, user_id: str):
     except Exception as e:
         await message.reply("❌ 記憶整理過程中發生錯誤", mention_author=False)
         print(f"手動整理記憶失敗：{e}")
-
-    memories = {}
-    for user_id in user_ids:
-        try:
-            doc_ref = db.collection("users").document(user_id)
-            doc = doc_ref.get()
-            if doc.exists:
-                user_memories = doc.to_dict().get("memories", [])
-                if user_memories:
-                    memories[user_id] = user_memories
-        except Exception as e:
-            print(f"讀取用戶 {user_id} 記憶失敗：{e}")
-    
-    return memories
 
 async def extract_memory_summary(new_messages: list, current_user_name: str) -> str:
     """從新的對話消息中提取關於當前用戶的記憶摘要"""
