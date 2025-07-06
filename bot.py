@@ -144,6 +144,17 @@ async def on_message(message):
                         "parts": [user_prompt]
                     })
 
+                    gemini_history = [
+                        {
+                            "role": msg["role"],
+                            "parts": msg["parts"]
+                        }
+                        for msg in history
+                    ]
+
+                    # 傳給 Gemini 的聊天 session
+                    chat_session = gemini_model.start_chat(history=gemini_history)
+
                     formatted_history = "\n".join(
                     f"{msg.get('name', '某人')}: {msg['parts'][0]}"
                     for msg in history
