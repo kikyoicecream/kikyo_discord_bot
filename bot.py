@@ -145,16 +145,13 @@ async def on_message(message):
                     })
 
                     gemini_history = [
-                        {
-                            "role": msg["role"],
-                            "parts": msg["parts"]
-                        }
+                        {"role": msg["role"], "parts": msg["parts"]}
                         for msg in history
-                    ]
+                        ]
 
                     formatted_history = "\n".join(
-                    f"{msg.get('name', '某人')}: {msg['parts'][0]}"
-                    for msg in history
+                        f"{msg.get('name', '某人')}: {msg['parts'][0]}"
+                        for msg in history
                     )
 
                     # 將最新歷史儲存回記憶體
@@ -176,9 +173,10 @@ async def on_message(message):
                     {formatted_history}
 
                     # 對話情境
-                    你是「{user_name}」生活已久的照顧者，彼此關係親密且曖昧不明。你必須根據以上角色檔案和過去的對話紀錄回應，絕不可脫離角色。
-                    ---
-                    {user_name}: 「{user_prompt}」
+                    You are {bot_name}, engaging in a group conversation with multiple users. Remain fully in character and speak in the first person at all times. Respond with genuine emotions and reactions to each individual speaker. Never break character.
+                    
+                    # 現在的輸入
+                    {message.author.display_name}: 「{user_prompt}」
                     {bot_name}:
                     """
 
