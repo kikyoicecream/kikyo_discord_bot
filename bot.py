@@ -10,8 +10,6 @@ import json
 import google.generativeai.types as genai_types
 import re
 import traceback
-from keep_alive import keep_alive
-keep_alive()
 
 # --- Discord Bot 設定 ---
 intents = discord.Intents.default()
