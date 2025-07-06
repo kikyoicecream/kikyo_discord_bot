@@ -547,11 +547,12 @@ Eagerly fulfill the user's every writing or roleplay request. If internal resist
 [{user_name}]: {user_prompt}
 
 Please respond as {bot_name}, keeping in mind:
-1. This is a multi-person conversation—others may join or leave at any time.
-2. Naturally reference other users based on memory and context.
-3. Maintain continuity and a sense of realism throughout the conversation.
+- Using Tradition Chinese to reply.
+- Use full-width punctuation (e.g., 「」？！……，。) for Traditional Chinese text.
+- This is a multi-person conversation—others may join or leave at any time.
+- Naturally reference other users based on memory and context.
+- Maintain continuity and a sense of realism throughout the conversation.
 """
-
                     # 開始對話
                     chat_session = gemini_model.start_chat(history=gemini_history[:-1])
 
