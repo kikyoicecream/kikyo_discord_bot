@@ -147,6 +147,15 @@ def get_multiple_user_memories(user_ids: list) -> dict:
     
     return memories
 
+async def process_memory_background(new_messages: list, user_name: str, user_id: str):
+    """在背景處理記憶，不影響用戶體驗"""
+    try:
+        summary = await extract_memory_summary(new_messages, user_name)
+        if summary:
+            await save_memory_to_firebase(user_id, summary)
+    except Exception as e:
+        print(f"背景記憶處理失敗：{e}")
+
 async def consolidate_user_memories(user_id: str) -> bool:
     """整理使用者的記憶，將相似和重複的記憶合併"""
     if not db:
@@ -592,15 +601,14 @@ Please respond as {bot_name}, keeping in mind:
                     # 回覆使用者
                     await message.reply(model_reply, mention_author=False)
 
-                    # 記憶處理：只處理與當前使用者相關的記憶
+                    # 記憶處理：在背景執行，不顯示 typing 狀態
                     try:
                         new_messages = history[history_length_before:]
                         if len(new_messages) >= 2:
-                            summary = await extract_memory_summary(new_messages, user_name)
-                            if summary:
-                                await save_memory_to_firebase(user_id, summary)
+                            # 使用 create_task 在背景執行
+                            asyncio.create_task(process_memory_background(new_messages, user_name, user_id))
                     except Exception as e:
-                        print(f"記憶處理失敗：{e}")
+                        print(f"啟動記憶處理失敗：{e}")
 
                 else:
                     await message.reply(f"抱歉，我找不到名為「{persona_id}」的人格資料⋯⋯", mention_author=False)
