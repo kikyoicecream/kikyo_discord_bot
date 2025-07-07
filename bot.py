@@ -31,13 +31,24 @@ MEMORY_CONSOLIDATION_INTERVAL = 86400  # 每24小時強制整理一次
 # 追蹤每個使用者的上次整理時間
 last_consolidation_time = {}
 
+# 添加併發控制
+consolidation_locks = {}  # 用於防止同時整理同一用戶的記憶
+
 def cleanup_old_conversations():
+    """清理舊對話，包括相關的記憶整理時間記錄"""
     if len(conversation_histories) > MAX_CONVERSATIONS:
         oldest_channels = list(conversation_histories.keys())[:len(conversation_histories) - MAX_CONVERSATIONS]
         for channel_id in oldest_channels:
             del conversation_histories[channel_id]
             if channel_id in active_users:
                 del active_users[channel_id]
+    
+    # 清理舊的整理時間記錄
+    if len(last_consolidation_time) > MAX_CONVERSATIONS:
+        # 保留最近的記錄
+        sorted_items = sorted(last_consolidation_time.items(), key=lambda x: x[1], reverse=True)
+        last_consolidation_time.clear()
+        last_consolidation_time.update(dict(sorted_items[:MAX_CONVERSATIONS]))
 
 def update_active_users(channel_id: int, user_id: str, user_name: str):
     """更新頻道中的活躍使用者列表"""
@@ -157,10 +168,17 @@ async def process_memory_background(new_messages: list, user_name: str, user_id:
         print(f"背景記憶處理失敗：{e}")
 
 async def consolidate_user_memories(user_id: str) -> bool:
-    """整理使用者的記憶，將相似和重複的記憶合併"""
+    """改進的記憶整理，增加併發控制"""
     if not db:
         return False
+
+    # 防止同時整理同一用戶的記憶
+    if user_id in consolidation_locks:
+        print(f"使用者 {user_id} 的記憶正在整理中，跳過")
+        return False
     
+    consolidation_locks[user_id] = True
+
     try:
         # 獲取使用者的現有記憶
         doc_ref = db.collection("users").document(user_id)
@@ -212,25 +230,33 @@ Output the organized memory directly, without any introductory text.
         if not consolidated_lines:
             return False
         
-        # 更新 Firebase
-        doc_ref.set({
-            "memories": consolidated_lines,
-            "last_updated": firestore.SERVER_TIMESTAMP,
-            "last_consolidated": firestore.SERVER_TIMESTAMP
-        }, merge=True)
+        # 更新 Firebase（增加錯誤處理）
+        try:
+            doc_ref.set({
+                "memories": consolidated_lines,
+                "last_updated": firestore.SERVER_TIMESTAMP,
+                "last_consolidated": firestore.SERVER_TIMESTAMP
+            }, merge=True)
+            
+            print(f"已為使用者 {user_id} 整理記憶：{len(existing_memories)} -> {len(consolidated_lines)}")
         
-        print(f"已為使用者 {user_id} 整理記憶：{len(existing_memories)} -> {len(consolidated_lines)}")
+            # 更新整理時間
+            last_consolidation_time[user_id] = datetime.utcnow()
+            return True
         
-        # 更新整理時間
-        last_consolidation_time[user_id] = datetime.now()
-        return True
-        
+        except Exception as e:
+            print(f"更新 Firebase 失敗：{e}")
+            return False
+
     except Exception as e:
         print(f"記憶整理失敗：{e}")
         return False
+    finally:
+        # 清理鎖
+        consolidation_locks.pop(user_id, None)
 
 async def should_consolidate_memories(user_id: str) -> bool:
-    """判斷是否需要整理記憶"""
+    """改進的記憶整理需求判斷"""
     if not db:
         return False
     
@@ -247,43 +273,43 @@ async def should_consolidate_memories(user_id: str) -> bool:
         if len(memories) >= MEMORY_CONSOLIDATION_THRESHOLD:
             return True
         
-        # 檢查時間間隔
+        # 統一使用 UTC 時間進行比較
+        current_time = datetime.utcnow()
+
+        # 檢查本地記錄的時間間隔
         last_time = last_consolidation_time.get(user_id)
         if last_time:
-            # 移除時區信息進行比較
-            current_time = datetime.now()
+            # 轉換為 UTC 時間
             if last_time.tzinfo is not None:
-                last_time = last_time.replace(tzinfo=None)
+                last_time_utc = last_time.utctimetuple()
+                last_time_utc = datetime(*last_time_utc[:6])
+            else:
+                last_time_utc = last_time
             
-            time_diff = current_time - last_time
+            time_diff = current_time - last_time_utc
             if time_diff.total_seconds() >= MEMORY_CONSOLIDATION_INTERVAL:
                 return True
-        else:
-            # 檢查 Firebase 中的上次整理時間
-            data = doc.to_dict()
-            if "last_consolidated" in data:
+            
+        # 檢查 Firebase 中的上次整理時間
+        data = doc.to_dict()
+        if "last_consolidated" in data and data["last_consolidated"]:
+            try:
                 last_consolidated = data["last_consolidated"]
-                if last_consolidated:
-                    # 轉換為無時區的 datetime
-                    if hasattr(last_consolidated, 'timestamp'):
-                        # Firestore Timestamp 對象
-                        last_consolidated_naive = datetime.fromtimestamp(
-                            last_consolidated.timestamp()
-                        )
-                    elif isinstance(last_consolidated, datetime):
-                        # 移除時區信息
-                        last_consolidated_naive = last_consolidated.replace(tzinfo=None)
-                    else:
-                        # 無法識別的時間格式，跳過時間檢查
-                        return len(memories) >= 10
-                    
-                    current_time = datetime.now()
-                    time_diff = current_time - last_consolidated_naive
+                if hasattr(last_consolidated, 'timestamp'):
+                    # Firestore Timestamp 轉換為 UTC datetime
+                    last_consolidated_utc = datetime.utcfromtimestamp(
+                        last_consolidated.timestamp()
+                    )
+                    time_diff = current_time - last_consolidated_utc
                     if time_diff.total_seconds() >= MEMORY_CONSOLIDATION_INTERVAL:
                         return True
-            else:
-                # 從未整理過，如果有足夠記憶就整理
+            except Exception as e:
+                print(f"解析 Firebase 時間戳失敗：{e}")
+                # 如果時間解析失敗，根據記憶數量判斷
                 return len(memories) >= 10
+        else:
+            # 從未整理過，如果有足夠記憶就整理
+            return len(memories) >= 10
         
         return False
         
@@ -330,7 +356,7 @@ Conversation:
 {messages_text}
 
 Please extract only information related to {current_user_name}, listing each point as a concise sentence, one per line, without numbering or formatting symbols.
-If there is no important information worth remembering, reply with “None.”
+If there is no important information worth remembering, reply with "None."
 
 Example format:
 Enjoys watching anime
@@ -363,9 +389,10 @@ Has a good relationship with other users
         return ""
 
 async def save_memory_to_firebase(user_id: str, summary: str):
-    """將新的記憶摘要保存到 Firebase，並在需要時觸發整理"""
+    """改進的記憶保存，增加更好的錯誤處理"""
     if not db or not summary:
         return
+        
     try:
         doc_ref = db.collection("users").document(user_id)
         user_doc = doc_ref.get()
@@ -398,19 +425,25 @@ async def save_memory_to_firebase(user_id: str, summary: str):
             if len(all_memories) > 30:
                 all_memories = all_memories[-30:]
             
-            doc_ref.set({
-                "memories": all_memories,
-                "last_updated": firestore.SERVER_TIMESTAMP
-            }, merge=True)
-            print(f"已為使用者 {user_id} 保存 {len(unique_new_points)} 條新記憶")
-            
-            # 檢查是否需要整理記憶
-            if await should_consolidate_memories(user_id):
-                print(f"觸發使用者 {user_id} 的記憶整理")
-                await consolidate_user_memories(user_id)
+            try:
+                doc_ref.set({
+                    "memories": all_memories,
+                    "last_updated": firestore.SERVER_TIMESTAMP
+                }, merge=True)
+                print(f"已為使用者 {user_id} 保存 {len(unique_new_points)} 條新記憶")
+                
+                # 檢查是否需要整理記憶
+                if await should_consolidate_memories(user_id):
+                    print(f"觸發使用者 {user_id} 的記憶整理")
+                    # 使用 create_task 避免阻塞
+                    asyncio.create_task(consolidate_user_memories(user_id))
+                    
+            except Exception as e:
+                print(f"寫入 Firebase 失敗：{e}")
+                # 可以考慮實施重試機制
                 
     except Exception as e:
-        print(f"寫入 Firebase 記憶失敗：{e}")
+        print(f"保存記憶過程失敗：{e}")
 
 def format_character_profile(persona: dict) -> str:
     """格式化角色資料"""
