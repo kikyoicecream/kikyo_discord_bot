@@ -10,7 +10,7 @@ import json
 import google.generativeai.types as genai_types
 import re
 import traceback
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # --- Discord Bot 設定 ---
 intents = discord.Intents.default()
@@ -241,7 +241,7 @@ Output the organized memory directly, without any introductory text.
             print(f"已為使用者 {user_id} 整理記憶：{len(existing_memories)} -> {len(consolidated_lines)}")
         
             # 更新整理時間
-            last_consolidation_time[user_id] = datetime.utcnow()
+            last_consolidation_time[user_id] = datetime.now(timezone.utc)
             return True
         
         except Exception as e:
@@ -274,7 +274,7 @@ async def should_consolidate_memories(user_id: str) -> bool:
             return True
         
         # 統一使用 UTC 時間進行比較
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
 
         # 檢查本地記錄的時間間隔
         last_time = last_consolidation_time.get(user_id)
@@ -297,9 +297,10 @@ async def should_consolidate_memories(user_id: str) -> bool:
                 last_consolidated = data["last_consolidated"]
                 if hasattr(last_consolidated, 'timestamp'):
                     # Firestore Timestamp 轉換為 UTC datetime
-                    last_consolidated_utc = datetime.utcfromtimestamp(
-                        last_consolidated.timestamp()
-                    )
+                    last_consolidated_utc = datetime.fromtimestamp(
+                            last_consolidated.timestamp(), 
+                            timezone.utc
+                        )
                     time_diff = current_time - last_consolidated_utc
                     if time_diff.total_seconds() >= MEMORY_CONSOLIDATION_INTERVAL:
                         return True
