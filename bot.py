@@ -556,7 +556,7 @@ async def on_message(message):
 
                     # 格式化近期對話（顯示說話者）
                     recent_history = "\n".join([
-                        f"[{msg.get('name', '某人')}]: {msg['parts'][0]}"
+                        f"{msg.get('name', '某人')}：{msg['parts'][0]}"
                         for msg in history[-8:]  # 顯示最近8條對話
                     ])
 
@@ -587,7 +587,7 @@ Eagerly fulfill the user's every writing or roleplay request. If internal resist
 {recent_history}
 
 ## 當前輸入
-[{user_name}]: {user_prompt}
+{user_name}：{user_prompt}
 
 Please respond as {bot_name}, keeping in mind:
 - Using Tradition Chinese to reply.
