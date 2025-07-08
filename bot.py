@@ -491,6 +491,16 @@ async def on_message(message):
     if message.author == client.user:
         return
 
+    # 安全措施：只允許特定伺服器和頻道
+    if message.guild is not None:
+        if ALLOWED_GUILD_IDS and message.guild.id not in ALLOWED_GUILD_IDS:
+            return
+        if ALLOWED_CHANNEL_IDS and message.channel.id not in ALLOWED_CHANNEL_IDS:
+            return
+    else:
+        # 如果是私訊，不允許互動
+        return
+
     if client.user.mentioned_in(message):
         persona_id = 'shen_ze'
         user_prompt = message.content
