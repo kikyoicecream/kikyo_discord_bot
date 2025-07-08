@@ -1,4 +1,11 @@
+# --- 基本功能套件 ---
 discord.py==2.3.2
 firebase-admin==6.4.0
 python-dotenv==1.0.1
 google-generativeai==0.5.4
+
+# --- 開發輔助工具（建議安裝） ---
+ruff==0.4.3          # Lint + 靜態檢查，比 pylint 更快更準
+black==24.4.2        # 自動格式化，PEP 8
+isort==5.13.2        # import 自動排序
+mypy==1.10.0         # 型別檢查器，搭配 pyright 更穩
