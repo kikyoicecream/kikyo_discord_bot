@@ -23,7 +23,7 @@ active_users = {}  # 追蹤每個頻道的活躍使用者
 
 # 記憶體管理
 MAX_CONVERSATIONS = 50
-MAX_HISTORY_LENGTH = 15  # 增加到15條以便更好處理群聊
+MAX_HISTORY_LENGTH = 15  # 增加到15則以便更好處理群聊
 ACTIVE_USER_TIMEOUT = 300  # 5分鐘後認為使用者不活躍
 MEMORY_CONSOLIDATION_THRESHOLD = 30
 MEMORY_CONSOLIDATION_INTERVAL = 86400  # 每24小時強制整理一次
@@ -405,15 +405,15 @@ async def save_memory_to_firebase(user_id: str, summary: str, user_name: str):
         # 先加進去
         all_memories = existing + new_points
 
-        # 如果超過30條，壓縮最舊的30條
+        # 如果超過30則，壓縮最舊的30則
         while len(all_memories) > 30:
             to_compress = all_memories[:30]
             compressed = await compress_memories(to_compress, user_name)
             # 用特殊標記區分壓縮記憶
-            compressed = f"【壓縮記憶】{compressed}"
+            compressed = f"{compressed}"
             all_memories = [compressed] + all_memories[30:]
 
-        # 最後只保留30條
+        # 最後只保留30則
         if len(all_memories) > 30:
             all_memories = all_memories[-30:]
 
@@ -421,17 +421,17 @@ async def save_memory_to_firebase(user_id: str, summary: str, user_name: str):
             "memories": all_memories,
             "last_updated": firestore.SERVER_TIMESTAMP
         }, merge=True)
-        print(f"已為使用者 {user_id} 保存 {len(new_points)} 條新記憶（壓縮後總數：{len(all_memories)}）")
+        print(f"已為使用者 {user_id} 保存 {len(new_points)} 則新記憶（壓縮後總數：{len(all_memories)}）")
 
     except Exception as e:
         print(f"保存記憶過程失敗：{e}")
 
 async def compress_memories(memories: list, user_name: str) -> str:
     """
-    用 Gemini 將多條記憶壓縮成 100 tokens 以內的段落。
+    Using Gemini, compress multiple memory entries into a single narrative paragraph no longer than 100 tokens.
     """
     prompt = f"""
-請將以下關於{user_name}的{len(memories)}條記憶，濃縮成一段不超過100個tokens的繁體中文摘要，保留最重要的特徵、事件、關係、興趣等資訊。請用敘述段落方式呈現，不要條列、不要編號。
+Please condense the following {len(memories)} memories about {user_name} into a summary, no longer than 100 tokens. Retain the most important traits, events, relationships, and interests. Present the summary as a narrative paragraph—do not use bullet points or numbering.
 
 記憶內容：
 {chr(10).join('- ' + m for m in memories)}
@@ -468,7 +468,7 @@ def format_group_memories(memories_dict: dict, active_users_dict: dict) -> str:
         
         if memories:
             formatted_memories.append(f"關於 {user_name}:")
-            for memory in memories[-5:]:  # 只顯示最近5條記憶
+            for memory in memories[-5:]:  # 只顯示最近5則記憶
                 formatted_memories.append(f"  - {memory}")
     
     return "\n".join(formatted_memories) if formatted_memories else "目前沒有關於其他使用者的記憶記錄"
@@ -561,7 +561,7 @@ async def on_message(message):
                     # 格式化近期對話（顯示說話者）
                     recent_history = "\n".join([
                         f"{msg.get('name', '某人')}：{msg['parts'][0]}"
-                        for msg in history[-8:]  # 顯示最近8條對話
+                        for msg in history[-8:]  # 顯示最近8則對話
                     ])
 
                     # 格式化角色資料
