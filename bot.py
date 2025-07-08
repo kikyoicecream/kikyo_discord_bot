@@ -161,10 +161,13 @@ def get_multiple_user_memories(user_ids: list) -> dict:
     return memories
 
 async def process_memory_background(new_messages: list, user_name: str, user_id: str):
-    """在背景處理記憶，不影響用戶體驗"""
+    """在背景處理記憶，不影響使用者體驗"""
+    print(f"開始處理使用者 {user_id} 的背景記憶任務⋯⋯")
     try:
+        print(f"提取使用者 {user_id} 的記憶摘要⋯⋯")
         summary = await extract_memory_summary(new_messages, user_name)
         if summary:
+            print(f"為使用者 {user_id} 儲存記憶摘要⋯⋯")
             await save_memory_to_firebase(user_id, summary, user_name)
     except Exception as e:
         print(f"背景記憶處理失敗：{e}")
@@ -421,7 +424,8 @@ async def save_memory_to_firebase(user_id: str, summary: str, user_name: str):
             "memories": all_memories,
             "last_updated": firestore.SERVER_TIMESTAMP
         }, merge=True)
-        print(f"已為使用者 {user_id} 保存 {len(new_points)} 則新記憶（壓縮後總數：{len(all_memories)}）")
+        timestamp = datetime.now().strftime('%Y/%m/%d %H:%M')
+        print(f"{timestamp} 已為使用者 {user_id} 保存 {len(new_points)} 則新記憶，總共 {len(all_memories)} 則記憶")
 
     except Exception as e:
         print(f"保存記憶過程失敗：{e}")
@@ -510,7 +514,7 @@ async def on_message(message):
         if not user_prompt:
             async with message.channel.typing():
                 await asyncio.sleep(1)
-                await message.reply("請問，找我有什麼事嗎？", mention_author=False)
+                await message.reply("「想說什麼？叔叔聽你說。」", mention_author=False)
             return
 
         async with message.channel.typing():
