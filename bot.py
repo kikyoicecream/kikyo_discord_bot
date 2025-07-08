@@ -25,7 +25,7 @@ active_users = {}  # 追蹤每個頻道的活躍使用者
 MAX_CONVERSATIONS = 50
 MAX_HISTORY_LENGTH = 15  # 增加到15條以便更好處理群聊
 ACTIVE_USER_TIMEOUT = 300  # 5分鐘後認為使用者不活躍
-MEMORY_CONSOLIDATION_THRESHOLD = 20  # 當記憶數量超過20條時觸發整理
+MEMORY_CONSOLIDATION_THRESHOLD = 30
 MEMORY_CONSOLIDATION_INTERVAL = 86400  # 每24小時強制整理一次
 
 # 追蹤每個使用者的上次整理時間
@@ -207,7 +207,6 @@ Organize the summary using the following format:
 3. Keep important personal traits and events
 4. Use concise sentences
 5. Avoid numbering or symbols, one key point per line
-6. Keep no more than 20 of the most important memory points
 
 Output the organized memory directly, without any introductory text.
 """
