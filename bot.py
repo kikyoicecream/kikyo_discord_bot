@@ -165,7 +165,7 @@ async def process_memory_background(new_messages: list, user_name: str, user_id:
     try:
         summary = await extract_memory_summary(new_messages, user_name)
         if summary:
-            await save_memory_to_firebase(user_id, summary)
+            await save_memory_to_firebase(user_id, summary, user_name)
     except Exception as e:
         print(f"背景記憶處理失敗：{e}")
 
@@ -391,7 +391,7 @@ Has a good relationship with other users
         print(f"記憶摘要提取失敗：{e}")
         return ""
 
-async def save_memory_to_firebase(user_id: str, summary: str):
+async def save_memory_to_firebase(user_id: str, summary: str, user_name: str):
     """改進的記憶保存，增加更好的錯誤處理"""
     if not db or not summary:
         return
@@ -403,50 +403,43 @@ async def save_memory_to_firebase(user_id: str, summary: str):
         
         new_points = [line.strip() for line in summary.split("\n") if line.strip()]
         
-        # 改進的去重邏輯
-        unique_new_points = []
-        for point in new_points:
-            # 更嚴格的重複檢查
-            is_duplicate = False
-            for existing_memory in existing:
-                # 計算相似度（簡單的字符匹配）
-                similarity = len(set(point.lower().split()) & set(existing_memory.lower().split()))
-                if similarity >= 2 and len(point.split()) <= 6:  # 短句子相似度高就是重複
-                    is_duplicate = True
-                    break
-                elif point.lower() in existing_memory.lower() or existing_memory.lower() in point.lower():
-                    is_duplicate = True
-                    break
-            
-            if not is_duplicate:
-                unique_new_points.append(point)
-        
-        if unique_new_points:
-            all_memories = existing + unique_new_points
-            
-            # 臨時限制數量（整理前）
-            if len(all_memories) > 30:
-                all_memories = all_memories[-30:]
-            
-            try:
-                doc_ref.set({
-                    "memories": all_memories,
-                    "last_updated": firestore.SERVER_TIMESTAMP
-                }, merge=True)
-                print(f"已為使用者 {user_id} 保存 {len(unique_new_points)} 條新記憶")
-                
-                # 檢查是否需要整理記憶
-                if await should_consolidate_memories(user_id):
-                    print(f"觸發使用者 {user_id} 的記憶整理")
-                    # 使用 create_task 避免阻塞
-                    asyncio.create_task(consolidate_user_memories(user_id))
-                    
-            except Exception as e:
-                print(f"寫入 Firebase 失敗：{e}")
-                # 可以考慮實施重試機制
-                
+        # 先加進去
+        all_memories = existing + new_points
+
+        # 如果超過30條，壓縮最舊的30條
+        while len(all_memories) > 30:
+            to_compress = all_memories[:30]
+            compressed = await compress_memories(to_compress, user_name)
+            # 用特殊標記區分壓縮記憶
+            compressed = f"【壓縮記憶】{compressed}"
+            all_memories = [compressed] + all_memories[30:]
+
+        # 最後只保留30條
+        if len(all_memories) > 30:
+            all_memories = all_memories[-30:]
+
+        doc_ref.set({
+            "memories": all_memories,
+            "last_updated": firestore.SERVER_TIMESTAMP
+        }, merge=True)
+        print(f"已為使用者 {user_id} 保存 {len(new_points)} 條新記憶（壓縮後總數：{len(all_memories)}）")
+
     except Exception as e:
         print(f"保存記憶過程失敗：{e}")
+
+async def compress_memories(memories: list, user_name: str) -> str:
+    """
+    用 Gemini 將多條記憶壓縮成 100 tokens 以內的段落。
+    """
+    prompt = f"""
+請將以下關於{user_name}的{len(memories)}條記憶，濃縮成一段不超過100個tokens的繁體中文摘要，保留最重要的特徵、事件、關係、興趣等資訊。請用敘述段落方式呈現，不要條列、不要編號。
+
+記憶內容：
+{chr(10).join('- ' + m for m in memories)}
+"""
+    model = genai.GenerativeModel("models/gemini-2.0-flash")
+    response = await asyncio.to_thread(model.generate_content, prompt)
+    return response.text.strip() if response.text else ""
 
 def format_character_profile(persona: dict) -> str:
     """格式化角色資料"""
