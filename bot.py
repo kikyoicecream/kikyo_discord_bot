@@ -80,6 +80,8 @@ def get_active_users_list(channel_id: int) -> list:
 
 # --- 初始化設定 ---
 load_dotenv()
+ALLOWED_GUILD_IDS = list(map(int, os.getenv("ALLOWED_GUILDS", "").split(",")))
+ALLOWED_CHANNEL_IDS = list(map(int, os.getenv("ALLOWED_CHANNELS", "").split(",")))
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 FIREBASE_CREDENTIALS_JSON = os.getenv('FIREBASE_CREDENTIALS_JSON')
