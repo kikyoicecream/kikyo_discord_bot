@@ -645,6 +645,11 @@ Please respond as {bot_name}, keeping in mind:
                     # 回覆使用者
                     await message.reply(model_reply, mention_author=False)
 
+                    # 記錄回覆日誌
+                    timestamp = datetime.now().strftime('%Y/%m/%d %H:%M')
+                    truncated_reply = (model_reply[:20] + '......') if len(model_reply) > 20 else model_reply
+                    print(f"{timestamp} 已回覆使用者 {user_id}：{truncated_reply}")
+
                     # 記憶處理：在背景執行，不顯示 typing 狀態
                     try:
                         new_messages = history[history_length_before:]
