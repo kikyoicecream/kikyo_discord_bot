@@ -3,10 +3,6 @@ import subprocess
 import time
 import sys
 
-# This script is designed to be run with Python.
-# It acts as a wrapper for bot.py to handle restarts, which is useful
-# in hosting environments where the startup command cannot be changed.
-
 print("正在啟動 Bot...")
 
 try:
