@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import subprocess
 import time
 import sys
@@ -10,8 +11,8 @@ print("正在啟動 Bot...")
 
 try:
     while True:
-        # Use sys.executable to ensure we use the same Python environment
-        # that is running this script to execute bot.py.
+        # 使用 sys.executable 來確保我們用同一個 Python 環境
+        # 來執行 bot.py，這比寫死 'python' 或 'python3' 更有彈性。
         process = subprocess.run([sys.executable, 'bot.py'])
         exit_code = process.returncode
 
