@@ -386,7 +386,6 @@ Has a good relationship with other users
         response = await asyncio.to_thread(model.generate_content, prompt)
         result = response.text.strip() if response.text else ""
         
-        # 額外清理：移除可能的數字編號
         if result and result != "無":
             lines = result.split('\n')
             cleaned_lines = []
