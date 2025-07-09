@@ -490,8 +490,16 @@ def format_group_memories(memories_dict: dict, active_users_dict: dict) -> str:
 async def on_ready():
     print(f'Bot 已成功登入為 {client.user}')
     try:
-        synced = await tree.sync()
-        print(f"已同步 {len(synced)} 個指令")
+        # 將指令同步到指定的伺服器，這樣更新會幾乎立即生效
+        # 而不是等待長達一小時的全域同步
+        if ALLOWED_GUILD_IDS and ALLOWED_GUILD_IDS[0] != 0: # 確保列表不為空且不只包含0
+            for guild_id in ALLOWED_GUILD_IDS:
+                await tree.sync(guild=discord.Object(id=guild_id))
+            print(f"已為 {len(ALLOWED_GUILD_IDS)} 個指定的伺服器同步指令。")
+        else:
+            # 如果沒有指定伺服器，則進行全域同步
+            synced = await tree.sync()
+            print(f"已全域同步 {len(synced)} 個指令。")
     except Exception as e:
         print(f"同步指令失敗: {e}")
 
