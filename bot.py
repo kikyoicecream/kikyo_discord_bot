@@ -91,7 +91,7 @@ ALLOWED_GUILD_IDS = list(map(int, os.getenv("ALLOWED_GUILDS", "").split(",")))
 ALLOWED_CHANNEL_IDS = list(map(int, os.getenv("ALLOWED_CHANNELS", "").split(",")))
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-BOT_OWNER_ID = os.getenv('BOT_OWNER_ID')
+BOT_OWNER_IDS = [int(id) for id in os.getenv("BOT_OWNER_IDS", "").split(',') if id.strip()]
 FIREBASE_CREDENTIALS_JSON = os.getenv('FIREBASE_CREDENTIALS_JSON')
 
 if not DISCORD_TOKEN or not GEMINI_API_KEY:
@@ -506,8 +506,7 @@ async def on_ready():
 @tree.command(name="rsz", description="重新啟動BOT (僅限擁有者使用)")
 async def rsz(interaction: discord.Interaction):
     """重新啟動機器人"""
-    owner_id = int(BOT_OWNER_ID) if BOT_OWNER_ID else None
-    if not owner_id or interaction.user.id != owner_id:
+    if not BOT_OWNER_IDS or interaction.user.id not in BOT_OWNER_IDS:
         await interaction.response.send_message("❌ 你沒有權限使用此指令。", ephemeral=True)
         return
 
