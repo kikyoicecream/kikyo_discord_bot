@@ -11,6 +11,7 @@ import google.generativeai.types as genai_types
 import re
 import traceback
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 # --- Discord Bot 設定 ---
 intents = discord.Intents.default()
@@ -20,6 +21,9 @@ client = discord.Client(intents=intents)
 # 對話歷史和活躍使用者追蹤
 conversation_histories = {}
 active_users = {}  # 追蹤每個頻道的活躍使用者
+
+# 設定日誌的時區 (例如：台北時間 UTC+8)
+LOG_TIMEZONE = ZoneInfo("Asia/Taipei")
 
 # 記憶體管理
 MAX_CONVERSATIONS = 50
@@ -424,7 +428,7 @@ async def save_memory_to_firebase(user_id: str, summary: str, user_name: str):
             "memories": all_memories,
             "last_updated": firestore.SERVER_TIMESTAMP
         }, merge=True)
-        timestamp = datetime.now().strftime('%Y/%m/%d %H:%M')
+        timestamp = datetime.now(LOG_TIMEZONE).strftime('%Y/%m/%d %H:%M')
         print(f"{timestamp} 已為使用者 {user_id} 保存 {len(new_points)} 則新記憶，總共 {len(all_memories)} 則記憶")
 
     except Exception as e:
@@ -646,7 +650,7 @@ Please respond as {bot_name}, keeping in mind:
                     await message.reply(model_reply, mention_author=False)
 
                     # 記錄回覆日誌
-                    timestamp = datetime.now().strftime('%Y/%m/%d %H:%M')
+                    timestamp = datetime.now(LOG_TIMEZONE).strftime('%Y/%m/%d %H:%M')
                     truncated_reply = (model_reply[:20] + '......') if len(model_reply) > 20 else model_reply
                     print(f"{timestamp} 已回覆使用者 {user_id}：{truncated_reply}")
 
