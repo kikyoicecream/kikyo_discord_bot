@@ -1,11 +1,13 @@
 import discord
 import os
+import sys
 import google.generativeai as genai
 import asyncio
 from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials, firestore
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
+from discord import app_commands
 import json
 import google.generativeai.types as genai_types
 import re
@@ -17,6 +19,7 @@ from zoneinfo import ZoneInfo
 intents = discord.Intents.default()
 intents.message_content = True
 client = discord.Client(intents=intents)
+tree = app_commands.CommandTree(client)
 
 # 對話歷史和活躍使用者追蹤
 conversation_histories = {}
@@ -88,6 +91,7 @@ ALLOWED_GUILD_IDS = list(map(int, os.getenv("ALLOWED_GUILDS", "").split(",")))
 ALLOWED_CHANNEL_IDS = list(map(int, os.getenv("ALLOWED_CHANNELS", "").split(",")))
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+BOT_OWNER_ID = os.getenv('BOT_OWNER_ID')
 FIREBASE_CREDENTIALS_JSON = os.getenv('FIREBASE_CREDENTIALS_JSON')
 
 if not DISCORD_TOKEN or not GEMINI_API_KEY:
@@ -485,6 +489,24 @@ def format_group_memories(memories_dict: dict, active_users_dict: dict) -> str:
 @client.event
 async def on_ready():
     print(f'Bot 已成功登入為 {client.user}')
+    try:
+        synced = await tree.sync()
+        print(f"已同步 {len(synced)} 個指令")
+    except Exception as e:
+        print(f"同步指令失敗: {e}")
+
+@tree.command(name="rsz", description="重新啟動BOT (僅限擁有者使用)")
+async def rsz(interaction: discord.Interaction):
+    """重新啟動機器人"""
+    owner_id = int(BOT_OWNER_ID) if BOT_OWNER_ID else None
+    if not owner_id or interaction.user.id != owner_id:
+        await interaction.response.send_message("❌ 你沒有權限使用此指令。", ephemeral=True)
+        return
+
+    await interaction.response.send_message("Bot 正在重新啟動⋯⋯", ephemeral=True)
+    print("--- 由擁有者觸發 Bot 重新啟動 ---")
+    # 使用一個特殊的退出碼來觸發外部腳本的重啟
+    sys.exit(26)
 
 @client.event
 async def on_message(message):
