@@ -21,6 +21,9 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
+# --- 關鍵字觸發設定 ---
+PROACTIVE_KEYWORDS = ["叔叔"]
+
 # 對話歷史和活躍使用者追蹤
 conversation_histories = {}
 active_users = {}  # 追蹤每個頻道的活躍使用者
@@ -530,14 +533,22 @@ async def on_message(message):
         # 如果是私訊，不允許互動
         return
 
-    if client.user.mentioned_in(message):
+    # 檢查是否提及 Bot 或包含關鍵字
+    mentioned = client.user.mentioned_in(message)
+    # 使用 message.content.lower() 進行不分大小寫的比對
+    contains_keyword = any(keyword.lower() in message.content.lower() for keyword in PROACTIVE_KEYWORDS)
+
+    if mentioned or contains_keyword:
         persona_id = 'shen_ze'
         user_prompt = message.content
-        for mention in message.mentions:
-            if mention == client.user:
-                user_prompt = user_prompt.replace(f'<@{mention.id}>', '')
-        user_prompt = user_prompt.strip()
 
+        # 如果是被提及，從訊息中移除提及的部分
+        if mentioned:
+            for mention in message.mentions:
+                if mention == client.user:
+                    user_prompt = user_prompt.replace(f'<@{mention.id}>', '')
+        user_prompt = user_prompt.strip()
+        
         # 檢查是否指定了特定角色
         match = re.search(r'persona\s*:\s*(\w+)', user_prompt, re.IGNORECASE)
         if match:
