@@ -149,7 +149,8 @@ def get_user_memories(user_id: str):
             return doc.to_dict().get("memories", [])
         return []
     except Exception as e:
-        print(f"讀取記憶失敗：{e}")
+        print(f"讀取使用者 {user_id} 的記憶失敗：{e}")
+        traceback.print_exc()
         return []
 
 def get_multiple_user_memories(user_ids: list) -> dict:
@@ -168,6 +169,7 @@ def get_multiple_user_memories(user_ids: list) -> dict:
                     memories[user_id] = user_memories
         except Exception as e:
             print(f"讀取使用者 {user_id} 記憶失敗：{e}")
+            traceback.print_exc()
     
     return memories
 
@@ -182,6 +184,7 @@ async def process_memory_background(new_messages: list, user_name: str, user_id:
             await save_memory_to_firebase(user_id, summary, user_name)
     except Exception as e:
         print(f"背景記憶處理失敗：{e}")
+        print(traceback.format_exc())
 
 async def consolidate_user_memories(user_id: str) -> bool:
     """改進的記憶整理，增加併發控制"""
@@ -261,10 +264,12 @@ Output the organized memory directly, without any introductory text.
         
         except Exception as e:
             print(f"更新 Firebase 失敗：{e}")
+            traceback.print_exc()
             return False
 
     except Exception as e:
         print(f"記憶整理失敗：{e}")
+        traceback.print_exc()
         return False
     finally:
         # 清理鎖
@@ -321,6 +326,7 @@ async def should_consolidate_memories(user_id: str) -> bool:
                         return True
             except Exception as e:
                 print(f"解析 Firebase 時間戳失敗：{e}")
+                traceback.print_exc()
                 # 如果時間解析失敗，根據記憶數量判斷
                 return len(memories) >= 10
         else:
@@ -331,6 +337,7 @@ async def should_consolidate_memories(user_id: str) -> bool:
         
     except Exception as e:
         print(f"檢查整理需求失敗：{e}")
+        traceback.print_exc()
         return False
 
 async def handle_consolidate_command(message, user_id: str):
@@ -344,6 +351,7 @@ async def handle_consolidate_command(message, user_id: str):
     except Exception as e:
         await message.reply("❌ 記憶整理過程中發生錯誤", mention_author=False)
         print(f"手動整理記憶失敗：{e}")
+        traceback.print_exc()
 
 async def extract_memory_summary(new_messages: list, current_user_name: str) -> str:
     """從新的對話消息中提取關於當前使用者的記憶摘要"""
@@ -401,6 +409,7 @@ Has a good relationship with other users
         return result if result != "無" else ""
     except Exception as e:
         print(f"記憶摘要提取失敗：{e}")
+        traceback.print_exc()
         return ""
 
 async def save_memory_to_firebase(user_id: str, summary: str, user_name: str):
@@ -439,6 +448,7 @@ async def save_memory_to_firebase(user_id: str, summary: str, user_name: str):
 
     except Exception as e:
         print(f"保存記憶過程失敗：{e}")
+        traceback.print_exc()
 
 async def compress_memories(memories: list, user_name: str) -> str:
     """
