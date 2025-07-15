@@ -103,7 +103,7 @@ class MemoryManager:
                 return content
                 
             genai.configure(api_key=api_key)  # type: ignore
-            model = genai.GenerativeModel('gemini-1.5-flash')  # type: ignore
+            model = genai.GenerativeModel('gemini-2.0-flash')  # type: ignore
             
             # 摘要提示
             prompt = f"""
