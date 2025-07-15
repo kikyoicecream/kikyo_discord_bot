@@ -9,6 +9,7 @@ import os
 from datetime import datetime
 from typing import Dict, List, Optional
 from google.cloud import firestore
+from google.cloud.firestore import SERVER_TIMESTAMP
 from google.oauth2 import service_account
 
 class MemoryManager:
@@ -55,7 +56,7 @@ class MemoryManager:
             # 添加新記憶
             memory_entry = {
                 'content': content,
-                'timestamp': firestore.SERVER_TIMESTAMP,
+                'timestamp': SERVER_TIMESTAMP,
                 'character_id': character_id,
                 'user_id': user_id
             }
@@ -71,7 +72,7 @@ class MemoryManager:
                 'character_id': character_id,
                 'user_id': user_id,
                 'memories': memories,
-                'last_updated': firestore.SERVER_TIMESTAMP
+                'last_updated': SERVER_TIMESTAMP
             })
             
             return True
@@ -124,7 +125,7 @@ async def generate_character_response(character_name: str, character_persona: st
             return "「抱歉，我現在無法思考...」"
             
         genai.configure(api_key=api_key)  # type: ignore
-        model = genai.GenerativeModel('gemini-pro')  # type: ignore
+        model = genai.GenerativeModel('gemini-2.5-flash')  # type: ignore
         
         # 建構記憶內容
         memory_context = ""
