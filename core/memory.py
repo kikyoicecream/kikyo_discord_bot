@@ -36,13 +36,20 @@ class MemoryManager:
             print(f"❌ Firestore 連接失敗: {e}")
             return None
     
-    def save_character_user_memory(self, character_id: str, user_id: str, content: str):
+    async def save_character_user_memory(self, character_id: str, user_id: str, content: str):
         """保存角色與用戶的對話記憶"""
         if not self.db:
+            print("❌ Firestore 資料庫連接失敗，無法保存記憶")
             return False
             
         try:
-            doc_ref = self.db.collection('character_memories').document(f"{character_id}_{user_id}")
+            print(f"📝 正在處理記憶：{character_id} - {user_id}")
+            
+            # 使用 Gemini API 整理和摘要記憶
+            summarized_memory = await self._summarize_memory_with_gemini(content)
+            
+            # 使用新的路徑結構：/character_id/users/memory/user_id
+            doc_ref = self.db.collection(character_id).document('users').collection('memory').document(user_id)
             
             # 獲取現有記憶
             doc = doc_ref.get()  # type: ignore
@@ -51,10 +58,12 @@ class MemoryManager:
                 memories = data.get('memories', []) if data else []
             else:
                 memories = []
+                print(f"🆕 為用戶 {user_id} 創建新的記憶文檔")
             
-            # 添加新記憶
+            # 添加新記憶條目
             memory_entry = {
-                'content': content,
+                'original_content': content,
+                'summarized_content': summarized_memory,
                 'timestamp': datetime.now(),
                 'character_id': character_id,
                 'user_id': user_id
@@ -71,14 +80,57 @@ class MemoryManager:
                 'character_id': character_id,
                 'user_id': user_id,
                 'memories': memories,
-                'last_updated': datetime.now()
+                'last_updated': datetime.now(),
+                'memory_count': len(memories)
             })
             
+            print(f"✅ 記憶保存成功：{len(memories)} 條記憶已保存到 /{character_id}/users/memory/{user_id}")
             return True
             
         except Exception as e:
             print(f"保存記憶時發生錯誤: {e}")
             return False
+    
+    async def _summarize_memory_with_gemini(self, content: str) -> str:
+        """使用 Gemini API 整理和摘要記憶"""
+        try:
+            import google.generativeai as genai
+            
+            # 設定 Google AI
+            api_key = os.getenv("GOOGLE_API_KEY")
+            if not api_key:
+                print("⚠️ 未找到 GOOGLE_API_KEY，使用原始內容")
+                return content
+                
+            genai.configure(api_key=api_key)  # type: ignore
+            model = genai.GenerativeModel('gemini-1.5-flash')  # type: ignore
+            
+            # 摘要提示
+            prompt = f"""
+You are a memory extraction assistant. From the conversation below, identify important information about the user, including: personal preferences, hobbies or interests, significant life events or experiences, emotional state or personality traits, relationships or interactions with other users, and any other facts worth remembering long-term.
+
+Conversation:
+{content}
+
+Please extract only information related to the user, listing each point as a concise sentence, one per line, without numbering or formatting symbols.
+If there is no important information worth remembering, reply with "None."
+
+Example format:
+Enjoys watching anime
+Lives in Taipei
+Currently learning programming
+Has a good relationship with other users
+"""
+            
+            response = model.generate_content(prompt)
+            summarized = response.text if response.text else content
+            
+            print(f"📋 記憶摘要完成：{summarized[:30]}...")
+            return summarized
+            
+        except Exception as e:
+            print(f"記憶摘要時發生錯誤: {e}")
+            return content
     
     def get_character_user_memory(self, character_id: str, user_id: str, limit: int = 10) -> List[Dict]:
         """獲取角色與用戶的對話記憶"""
@@ -86,7 +138,8 @@ class MemoryManager:
             return []
             
         try:
-            doc_ref = self.db.collection('character_memories').document(f"{character_id}_{user_id}")
+            # 使用新的路徑結構：/character_id/users/memory/user_id
+            doc_ref = self.db.collection(character_id).document('users').collection('memory').document(user_id)
             doc = doc_ref.get()  # type: ignore
             
             if doc.exists:
@@ -105,9 +158,9 @@ class MemoryManager:
 # 全域記憶管理器實例
 _memory_manager = MemoryManager()
 
-def save_character_user_memory(character_id: str, user_id: str, content: str):
+async def save_character_user_memory(character_id: str, user_id: str, content: str):
     """保存角色與用戶的對話記憶"""
-    return _memory_manager.save_character_user_memory(character_id, user_id, content)
+    return await _memory_manager.save_character_user_memory(character_id, user_id, content)
 
 def get_character_user_memory(character_id: str, user_id: str, limit: int = 10) -> List[Dict]:
     """獲取角色與用戶的對話記憶"""

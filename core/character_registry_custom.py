@@ -132,7 +132,9 @@ class CharacterRegistry:
                 
                 # 使用 memory.py 中的功能保存記憶
                 memory_content = f"{message.author.display_name} 說：{user_prompt}"
-                memory.save_character_user_memory(persona_id, str(message.author.id), memory_content)
+                save_success = await memory.save_character_user_memory(persona_id, str(message.author.id), memory_content)
+                if not save_success:
+                    print(f"⚠️ 記憶保存失敗：{persona_id} - {message.author.id}")
                 
                 # 發送回應
                 await message.reply(response, mention_author=False)
