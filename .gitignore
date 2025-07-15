@@ -1,2 +1,9 @@
 .env
+env_v1.txt
 serviceAccountKey.json
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+*.DS_Store
+discord-bot-kikyo-firebase-adminsdk-fbsvc-f30cc0e037.json
