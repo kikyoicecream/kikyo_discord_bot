@@ -28,10 +28,10 @@ class CharacterBot:
         load_dotenv()
         self.token = os.getenv(token_env_var)
         
-        # 權限設定
-        self.allowed_guild_ids = [int(x) for x in os.getenv("ALLOWED_GUILDS", "").split(",") if x.strip().isdigit()]
-        self.allowed_channel_ids = [int(x) for x in os.getenv("ALLOWED_CHANNELS", "").split(",") if x.strip().isdigit()]
-        self.bot_owner_ids = [int(id) for id in os.getenv("BOT_OWNER_IDS", "").split(',') if id.strip().isdigit()]
+        # 權限設定 - 支援個別角色權限
+        self.allowed_guild_ids = self._get_character_permission("ALLOWED_GUILDS")
+        self.allowed_channel_ids = self._get_character_permission("ALLOWED_CHANNELS")
+        self.bot_owner_ids = self._get_character_permission("BOT_OWNER_IDS")
         
         # 初始化角色註冊器
         self.character_registry = CharacterRegistry()
@@ -39,6 +39,20 @@ class CharacterBot:
         # 設定事件處理器
         self._setup_events()
         self._setup_commands()
+    
+    def _get_character_permission(self, permission_type: str) -> List[int]:
+        """取得角色專屬權限設定，如果沒有則使用全域設定"""
+        # 先嘗試取得角色專屬設定 (例如: SHEN_ZE_ALLOWED_GUILDS)
+        character_specific_key = f"{self.character_id.upper()}_" + permission_type
+        character_specific_value = os.getenv(character_specific_key, "")
+        
+        if character_specific_value.strip():
+            # 如果有角色專屬設定，使用它
+            return [int(x) for x in character_specific_value.split(",") if x.strip().isdigit()]
+        else:
+            # 否則使用全域設定
+            global_value = os.getenv(permission_type, "")
+            return [int(x) for x in global_value.split(",") if x.strip().isdigit()]
         
     def _setup_events(self):
         """設定事件處理器"""
