@@ -141,14 +141,16 @@ class CharacterBot:
                 await interaction.response.send_message("❌ 你沒有權限使用此指令。", ephemeral=True)
                 return
             
-            user_memories = memory.get_character_user_memory(self.character_id, str(interaction.user.id))
-            memory_count = len(user_memories)
+            user_memory = memory.get_character_user_memory(self.character_id, str(interaction.user.id))
+            memory_length = len(user_memory) if user_memory else 0
+            memory_lines = len(user_memory.split('\n')) if user_memory else 0
             
             embed = discord.Embed(
                 title=f"📊 {self.character_id} 記憶統計",
                 color=discord.Color.green()
             )
-            embed.add_field(name="你的記憶數量", value=f"{memory_count} 條", inline=True)
+            embed.add_field(name="記憶長度", value=f"{memory_length} 字符", inline=True)
+            embed.add_field(name="記憶行數", value=f"{memory_lines} 行", inline=True)
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
     

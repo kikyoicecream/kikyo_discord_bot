@@ -119,13 +119,13 @@ class CharacterRegistry:
                 character_persona = self.get_character_setting(persona_id, 'persona', '') or ''
                 
                 # 使用 memory.py 中的功能獲取用戶記憶
-                user_memories = memory.get_character_user_memory(persona_id, str(message.author.id))
+                user_memory = memory.get_character_user_memory(persona_id, str(message.author.id))
                 
                 # 使用 memory.py 中的功能生成回應
                 response = await memory.generate_character_response(
                     str(character_name), 
                     str(character_persona), 
-                    user_memories, 
+                    user_memory, 
                     user_prompt, 
                     message.author.display_name
                 )
