@@ -111,4 +111,42 @@ def save_character_user_memory(character_id: str, user_id: str, content: str):
 
 def get_character_user_memory(character_id: str, user_id: str, limit: int = 10) -> List[Dict]:
     """獲取角色與用戶的對話記憶"""
-    return _memory_manager.get_character_user_memory(character_id, user_id, limit) 
+    return _memory_manager.get_character_user_memory(character_id, user_id, limit)
+
+async def generate_character_response(character_name: str, character_persona: str, user_memories: List[Dict], user_prompt: str, user_display_name: str) -> str:
+    """生成角色回應"""
+    try:
+        import google.generativeai as genai
+        
+        # 設定 Google AI
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            return "「抱歉，我現在無法思考...」"
+            
+        genai.configure(api_key=api_key)  # type: ignore
+        model = genai.GenerativeModel('gemini-pro')  # type: ignore
+        
+        # 建構記憶內容
+        memory_context = ""
+        if user_memories:
+            memory_context = "\n".join([mem.get('content', '') for mem in user_memories[-5:]])  # 最近5條記憶
+            
+        # 建構提示
+        prompt = f"""你是{character_name}。
+
+角色設定：
+{character_persona}
+
+與{user_display_name}的對話記憶：
+{memory_context}
+
+現在{user_display_name}對你說：{user_prompt}
+
+請以{character_name}的身份回應，保持角色的個性和語氣。回應要自然、有趣，並且符合角色設定。"""
+
+        response = model.generate_content(prompt)
+        return response.text if response.text else "「...」"
+        
+    except Exception as e:
+        print(f"生成回應時發生錯誤: {e}")
+        return "「抱歉，我現在有點累...」" 
