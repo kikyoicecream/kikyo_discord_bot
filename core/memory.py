@@ -55,7 +55,7 @@ class MemoryManager:
             # 添加新記憶
             memory_entry = {
                 'content': content,
-                'timestamp': firestore.SERVER_TIMESTAMP,
+                'timestamp': datetime.now(),
                 'character_id': character_id,
                 'user_id': user_id
             }
@@ -71,7 +71,7 @@ class MemoryManager:
                 'character_id': character_id,
                 'user_id': user_id,
                 'memories': memories,
-                'last_updated': firestore.SERVER_TIMESTAMP
+                'last_updated': datetime.now()
             })
             
             return True
