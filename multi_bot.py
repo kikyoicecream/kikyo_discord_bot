@@ -189,17 +189,17 @@ def main():
     
     # 檢查命令列參數
     if len(sys.argv) > 1:
-        if sys.argv[1] == "--auto":
-            # 自動啟動模式
-            launcher.start_all_bots()
+        if sys.argv[1] == "--menu":
+            # 互動式選單模式
+            launcher.interactive_menu()
         elif sys.argv[1] == "--status":
             # 顯示狀態
             launcher.show_status()
         else:
             print("❌ 未知的參數")
     else:
-        # 互動式模式
-        launcher.interactive_menu()
+        # 預設自動啟動模式（避免互動選單卡住重啟）
+        launcher.start_all_bots()
 
 if __name__ == "__main__":
     main() 

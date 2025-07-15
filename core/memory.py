@@ -9,7 +9,6 @@ import os
 from datetime import datetime
 from typing import Dict, List, Optional
 from google.cloud import firestore
-from google.cloud.firestore import SERVER_TIMESTAMP
 from google.oauth2 import service_account
 
 class MemoryManager:
@@ -56,7 +55,7 @@ class MemoryManager:
             # 添加新記憶
             memory_entry = {
                 'content': content,
-                'timestamp': SERVER_TIMESTAMP,
+                'timestamp': firestore.SERVER_TIMESTAMP,
                 'character_id': character_id,
                 'user_id': user_id
             }
@@ -72,7 +71,7 @@ class MemoryManager:
                 'character_id': character_id,
                 'user_id': user_id,
                 'memories': memories,
-                'last_updated': SERVER_TIMESTAMP
+                'last_updated': firestore.SERVER_TIMESTAMP
             })
             
             return True
