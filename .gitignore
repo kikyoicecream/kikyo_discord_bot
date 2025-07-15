@@ -1,2 +1,8 @@
 .env
+env_example.txt
 serviceAccountKey.json
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+*.DS_Store
