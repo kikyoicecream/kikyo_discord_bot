@@ -1,9 +1,39 @@
+# 環境變數和敏感檔案
 .env
 env_v1.txt
+env_*.txt
 serviceAccountKey.json
+discord-bot-kikyo-firebase-adminsdk-fbsvc-*.json
+*.json
+
+# Python 快取檔案
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+.Python
+
+# 系統檔案
 .DS_Store
 *.DS_Store
-discord-bot-kikyo-firebase-adminsdk-fbsvc-f30cc0e037.json
+Thumbs.db
+
+# 虛擬環境
+venv/
+env/
+.venv/
+
+# IDE 檔案
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 日誌檔案
+*.log
+logs/
+
+# 臨時檔案
+*.tmp
+*.temp
+.cache/

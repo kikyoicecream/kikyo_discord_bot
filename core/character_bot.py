@@ -141,7 +141,7 @@ class CharacterBot:
                 await interaction.response.send_message("❌ 你沒有權限使用此指令。", ephemeral=True)
                 return
             
-            user_memories = memory.get_character_user_memories(self.character_id, str(interaction.user.id))
+            user_memories = memory.get_character_user_memory(self.character_id, str(interaction.user.id))
             memory_count = len(user_memories)
             
             embed = discord.Embed(
