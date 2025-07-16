@@ -106,7 +106,7 @@ class CharacterRegistry:
         
         return character_data.get(setting_key, default_value)
     
-    async def handle_message(self, message, character_id, client, proactive_keywords=None):
+    async def handle_message(self, message, character_id, client, proactive_keywords=None, gemini_config=None):
         """處理角色訊息"""
         # 檢查是否需要回應
         mentioned = client.user.mentioned_in(message)
@@ -158,15 +158,50 @@ class CharacterRegistry:
                 # 使用 memory.py 中的功能獲取使用者記憶
                 user_memories = memory.get_character_user_memory(persona_id, user_id)
                 
-                # 使用 memory.py 中的功能生成回應（包含群組上下文）
+                # 建構群組對話上下文
+                group_context = ""
+                if channel_id and character_id:
+                    try:
+                        from core.group_conversation_tracker import get_conversation_summary, get_active_users_in_channel, get_recent_conversation_context
+                        group_summary = get_conversation_summary(character_id, channel_id)
+                        active_users = get_active_users_in_channel(character_id, channel_id, 30)
+                        recent_context = get_recent_conversation_context(character_id, channel_id, 10)  # 獲取最近10則對話
+                        
+                        if active_users:
+                            # 過濾掉當前使用者
+                            other_users = [user for user in active_users if user['name'] != user_name]
+                            if other_users:
+                                other_user_names = [user['name'] for user in other_users[:3]]  # 最多3個其他使用者
+                                group_context = f"群組對話情況：{group_summary}\n其他活躍使用者：{', '.join(other_user_names)}"
+                            else:
+                                group_context = f"群組對話情況：{group_summary}"
+                        
+                        # 添加最近的對話上下文（包含BOT回應）
+                        if recent_context:
+                            conversation_lines = []
+                            for context in recent_context[-8:]:  # 最近8則對話
+                                if context['message'] and len(context['message']) > 5:
+                                    if context.get('is_bot', False):
+                                        conversation_lines.append(f"{context['user_name']}：{context['message']}")
+                                    else:
+                                        conversation_lines.append(f"{context['user_name']}：{context['message']}")
+                            
+                            if conversation_lines:
+                                group_context += f"\n\n最近對話記錄：\n" + "\n".join(conversation_lines)
+                                
+                    except Exception as e:
+                        print(f"獲取群組上下文時發生錯誤：{e}")
+                        group_context = ""
+                
+                # 使用 memory.py 中的功能生成回應（群組上下文由外部提供）
                 response = await memory.generate_character_response(
                     bot_name, 
                     character_persona, 
                     user_memories, 
                     user_prompt, 
                     user_name,
-                    channel_id,
-                    character_id
+                    group_context,
+                    gemini_config
                 )
                 
                 # 使用 memory.py 中的功能保存記憶

@@ -8,15 +8,16 @@ import asyncio
 from dotenv import load_dotenv
 from core.character_registry_custom import CharacterRegistry
 from core import memory
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 class CharacterBot:
     """通用角色 Bot 類別"""
     
-    def __init__(self, character_id: str, token_env_var: str, proactive_keywords: Optional[List[str]] = None):
+    def __init__(self, character_id: str, token_env_var: str, proactive_keywords: Optional[List[str]] = None, gemini_config: Optional[dict] = None):
         self.character_id = character_id
         self.token_env_var = token_env_var
         self.proactive_keywords = proactive_keywords if proactive_keywords is not None else []
+        self.gemini_config = gemini_config or {}
         
         # Discord Bot 設定
         intents = discord.Intents.default()
@@ -100,7 +101,8 @@ class CharacterBot:
                 message, 
                 self.character_id, 
                 self.client, 
-                self.proactive_keywords
+                self.proactive_keywords,
+                self.gemini_config
             )
     
     def _setup_commands(self):
@@ -193,6 +195,38 @@ class CharacterBot:
             except Exception as e:
                 print(f"獲取活躍使用者時發生錯誤: {e}")
                 await interaction.response.send_message("❌ 獲取活躍使用者資訊時發生錯誤。", ephemeral=True)
+        
+        @self.tree.command(name="gemini_config", description=f"顯示 {self.character_id} 的 Gemini AI 參數設定")
+        async def gemini_config(interaction: discord.Interaction):
+            """顯示 Gemini AI 參數設定"""
+            if not self.bot_owner_ids or interaction.user.id not in self.bot_owner_ids:
+                await interaction.response.send_message("❌ 你沒有權限使用此指令。", ephemeral=True)
+                return
+            
+            embed = discord.Embed(
+                title=f"🤖 {self.character_id} Gemini AI 參數",
+                color=discord.Color.purple()
+            )
+            
+            # 顯示當前參數
+            temperature = self.gemini_config.get('temperature', '未設定')
+            top_k = self.gemini_config.get('top_k', '未設定')
+            top_p = self.gemini_config.get('top_p', '未設定')
+            
+            embed.add_field(name="🌡️ Temperature", value=f"{temperature}", inline=True)
+            embed.add_field(name="🎯 Top-K", value=f"{top_k}", inline=True)
+            embed.add_field(name="📊 Top-P", value=f"{top_p}", inline=True)
+            
+            # 參數說明
+            embed.add_field(
+                name="📝 參數說明", 
+                value="""**Temperature**: 控制創造性 (0.0-1.0)
+**Top-K**: 詞彙多樣性 (1-40)
+**Top-P**: 核採樣 (0.0-1.0)""", 
+                inline=False
+            )
+            
+            await interaction.response.send_message(embed=embed, ephemeral=True)
     
     def run(self):
         """運行 Bot"""
@@ -207,7 +241,7 @@ class CharacterBot:
             print(f"❌ {self.character_id} Bot 運行時發生錯誤：{e}")
             return False
 
-def run_character_bot_with_restart(character_id: str, token_env_var: str, proactive_keywords: Optional[List[str]] = None):
+def run_character_bot_with_restart(character_id: str, token_env_var: str, proactive_keywords: Optional[List[str]] = None, gemini_config: Optional[dict] = None):
     """運行角色 Bot 並支援自動重啟"""
     print(f"🚀 正在啟動 {character_id} Bot...")
     
@@ -216,7 +250,7 @@ def run_character_bot_with_restart(character_id: str, token_env_var: str, proact
             print(f"--- 啟動 {character_id} Bot 主程序 ---")
             
             # 創建並運行 Bot
-            bot = CharacterBot(character_id, token_env_var, proactive_keywords)
+            bot = CharacterBot(character_id, token_env_var, proactive_keywords, gemini_config)
             success = bot.run()
             
             # 如果運行失敗，退出

@@ -17,13 +17,31 @@ CHARACTER_ID = "shen_ze"
 TOKEN_ENV_VAR = "SHEN_ZE_TOKEN"
 PROACTIVE_KEYWORDS = ["叔叔"]
 
+# --- Gemini AI 參數設定 ---
+GEMINI_TEMPERATURE = 0.8      # 創造性：0.0-1.0 (越高越有創意)
+GEMINI_TOP_K = 40            # 詞彙多樣性：1-40 (越高越多樣)
+GEMINI_TOP_P = 0.95          # 核採樣：0.0-1.0 (越高越集中)
+
 def main():
     """啟動沈澤 Bot"""
     print("🎭 沈澤 Discord Bot")
     print("=" * 50)
+    print(f"🌡️ Temperature: {GEMINI_TEMPERATURE}")
+    print(f"🎯 Top-K: {GEMINI_TOP_K}")
+    print(f"📊 Top-P: {GEMINI_TOP_P}")
+    print("=" * 50)
     
     # 運行 Bot（包含自動重啟功能）
-    run_character_bot_with_restart(CHARACTER_ID, TOKEN_ENV_VAR, PROACTIVE_KEYWORDS)
+    run_character_bot_with_restart(
+        CHARACTER_ID, 
+        TOKEN_ENV_VAR, 
+        PROACTIVE_KEYWORDS,
+        gemini_config={
+            'temperature': GEMINI_TEMPERATURE,
+            'top_k': GEMINI_TOP_K,
+            'top_p': GEMINI_TOP_P
+        }
+    )
 
 if __name__ == "__main__":
     main() 
