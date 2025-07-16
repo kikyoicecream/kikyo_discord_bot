@@ -22,7 +22,13 @@ class CharacterBot:
         # Discord Bot 設定
         intents = discord.Intents.default()
         intents.message_content = True
-        self.client = discord.Client(intents=intents)
+        
+        # 連線穩定性設定
+        self.client = discord.Client(
+            intents=intents,
+            heartbeat_timeout=60.0,  # 心跳超時時間
+            max_messages=1000,       # 訊息快取數量
+        )
         self.tree = app_commands.CommandTree(self.client)
         
         # 載入環境變數
@@ -80,6 +86,14 @@ class CharacterBot:
                     print(f"已全域同步 {len(synced)} 個指令。")
             except Exception as e:
                 print(f"同步指令失敗：{e}")
+        
+        @self.client.event
+        async def on_disconnect():
+            print(f'⚠️ {self.character_id} Bot 連線中斷')
+        
+        @self.client.event
+        async def on_resumed():
+            print(f'✅ {self.character_id} Bot 連線已恢復')
         
         @self.client.event
         async def on_message(message):
