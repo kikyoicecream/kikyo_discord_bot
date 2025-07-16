@@ -1,6 +1,5 @@
 import os
 import asyncio
-import re
 import json
 from typing import Dict, Optional, List
 from datetime import datetime, timedelta
@@ -77,11 +76,38 @@ class CharacterRegistry:
             print(f"註冊角色 {character_id} 失敗: {e}")
             return False
     
+    def _format_character_data(self, character_data: dict) -> str:
+        """將角色資料格式化為字串供 AI 使用"""
+        if not character_data:
+            return "角色資料未載入"
+        
+        # 直接將整個 profile 轉換為 JSON 格式
+        import json
+        try:
+            formatted_data = json.dumps(character_data, ensure_ascii=False, indent=2)
+            print(f"🔧 格式化角色資料 for {character_data.get('name', '未知')}:")
+            print(f"   欄位數量: {len(character_data)}")
+            print(f"   總長度: {len(formatted_data)} 字符")
+            return formatted_data
+        except Exception as e:
+            print(f"❌ 格式化角色資料失敗: {e}")
+            return str(character_data)
+
     def get_character_setting(self, character_id: str, setting_key: str, default_value=None):
         """獲取角色設定"""
-        if character_id in self.characters:
-            return self.characters[character_id].get(setting_key, default_value)
-        return default_value
+        if character_id not in self.characters:
+            return default_value
+            
+        character_data = self.characters[character_id]
+        
+        # 如果請求的是 persona，但資料中沒有，則使用 backstory
+        if setting_key == 'persona' and 'persona' not in character_data:
+            backstory = character_data.get('backstory', '')
+            if backstory:
+                print(f"🔧 使用 backstory 作為 {character_data.get('name', '未知')} 的 persona")
+                return backstory
+        
+        return character_data.get(setting_key, default_value)
     
     async def handle_message(self, message, character_id, client, proactive_keywords=None):
         """處理角色訊息"""
@@ -99,13 +125,8 @@ class CharacterRegistry:
         if mentioned:
             user_prompt = user_prompt.replace(f'<@{client.user.id}>', '').strip()
         
-        # 檢查是否切換角色
-        match = re.search(r'persona\s*:\s*(\w+)', user_prompt, re.IGNORECASE)
-        if match:
-            persona_id = match.group(1).lower()
-            user_prompt = re.sub(r'persona\s*:\s*\w+\s*', '', user_prompt, flags=re.IGNORECASE).strip()
-        else:
-            persona_id = character_id
+        # 直接使用當前角色 ID（移除角色切換功能）
+        persona_id = character_id
         
         if not user_prompt:
             async with message.channel.typing():
@@ -114,27 +135,39 @@ class CharacterRegistry:
         
         async with message.channel.typing():
             try:
-                # 獲取角色設定
-                character_name = self.get_character_setting(persona_id, 'name', persona_id) or persona_id
-                character_persona = self.get_character_setting(persona_id, 'persona', '') or ''
+                # 獲取完整的角色資料
+                character_data = self.characters.get(persona_id, {})
+                if not character_data:
+                    await message.reply("「抱歉，我的設定資料似乎有問題...」", mention_author=False)
+                    return True
+                
+                # 提取需要的資訊
+                user_name = message.author.display_name
+                user_id = str(message.author.id)
+                channel_id = message.channel.id
+                target_nick = character_data.get('name', persona_id)
+                bot_name = target_nick or persona_id
+                
+                # 格式化角色描述供 AI 使用
+                character_persona = self._format_character_data(character_data)
                 
                 # 使用 memory.py 中的功能獲取用戶記憶
-                user_memories = memory.get_character_user_memory(persona_id, str(message.author.id))
+                user_memories = memory.get_character_user_memory(persona_id, user_id)
                 
                 # 使用 memory.py 中的功能生成回應
                 response = await memory.generate_character_response(
-                    str(character_name), 
-                    str(character_persona), 
+                    bot_name, 
+                    character_persona, 
                     user_memories, 
                     user_prompt, 
-                    message.author.display_name
+                    user_name
                 )
                 
                 # 使用 memory.py 中的功能保存記憶
-                memory_content = f"{message.author.display_name} 說：{user_prompt}"
-                save_success = await memory.save_character_user_memory(persona_id, str(message.author.id), memory_content, message.author.display_name)
+                memory_content = f"{user_name} 說：{user_prompt}"
+                save_success = await memory.save_character_user_memory(persona_id, user_id, memory_content, user_name)
                 if not save_success:
-                    print(f"⚠️ 記憶保存失敗：{persona_id} - {message.author.id}")
+                    print(f"⚠️ 記憶保存失敗：{persona_id} - {user_id}")
                 
                 # 發送回應
                 await message.reply(response, mention_author=False)
