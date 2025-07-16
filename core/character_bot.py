@@ -118,21 +118,8 @@ class CharacterBot:
             if not should_respond:
                 return
             
-            # 在這裡管理打字狀態 - 持續的 typing 狀態
-            typing_task = None
-            
-            async def maintain_typing():
-                """維持持續的打字狀態"""
-                try:
-                    while True:
-                        await message.channel.trigger_typing()
-                        await asyncio.sleep(8)  # 每8秒重新發送typing
-                except asyncio.CancelledError:
-                    pass  # 正常取消
-            
-            typing_task = asyncio.create_task(maintain_typing())
-            
-            try:
+            # 使用 Discord.py 推薦的 typing 上下文管理器
+            async with message.channel.typing():
                 # 處理訊息（只使用自己的角色）
                 await self.character_registry.handle_message(
                     message, 
@@ -141,14 +128,6 @@ class CharacterBot:
                     self.proactive_keywords,
                     self.gemini_config
                 )
-            finally:
-                # 停止持續的打字狀態
-                if typing_task and not typing_task.done():
-                    typing_task.cancel()
-                    try:
-                        await typing_task
-                    except asyncio.CancelledError:
-                        pass  # 預期的取消
     
     def _setup_commands(self):
         """設定斜線指令"""
