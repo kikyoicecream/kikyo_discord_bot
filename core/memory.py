@@ -64,9 +64,9 @@ class MemoryManager:
             # 將摘要內容添加到 memories 陣列中
             memories.append(summarized_memory)
             
-            # 當記憶超過30則時，統整成一則摘要
-            if len(memories) > 30:
-                print(f"📋 記憶超過30則，正在統整記憶……")
+            # 當記憶超過15則時，統整成一則摘要
+            if len(memories) > 15:
+                print(f"📋 記憶超過15則，正在統整記憶……")
                 consolidated_memory = await self._consolidate_memories_with_gemini(memories, user_name)
                 memories = [consolidated_memory]  # 只保留統整後的記憶
                 print(f"✅ 記憶已統整完成，現在只有1則統整記憶")
