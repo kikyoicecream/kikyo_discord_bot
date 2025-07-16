@@ -300,7 +300,7 @@ Always place all character dialogue inside full-width quotation marks「」. Con
 Please respond as {character_name}, keeping in mind:
 - Using Tradition Chinese to reply.
 - Use full-width punctuation (e.g., 「」？！……，。) for Traditional Chinese text.
-- Generate a response that is 3 to 5 sentences long.
+- Generate a response that is 2 to 3 sentences long.
 - Proper line breaks for readability.
 - Naturally reference other users based on memory and context.
 - Maintain continuity and a sense of realism throughout the conversation.
