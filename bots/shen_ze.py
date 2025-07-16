@@ -15,7 +15,7 @@ from core.character_bot import run_character_bot_with_restart
 # --- 角色專屬設定 ---
 CHARACTER_ID = "shen_ze"
 TOKEN_ENV_VAR = "SHEN_ZE_TOKEN"
-PROACTIVE_KEYWORDS = ["沈澤", "shen_ze", "沈", "澤", "shen", "ze"]
+PROACTIVE_KEYWORDS = ["叔叔"]
 
 def main():
     """啟動沈澤 Bot"""
