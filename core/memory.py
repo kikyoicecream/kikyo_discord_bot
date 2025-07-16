@@ -47,7 +47,7 @@ class MemoryManager:
             print(f"📝 正在處理記憶：{character_id} - {user_id}")
             
             # 使用 Gemini API 整理和摘要記憶
-            summarized_memory = await self._summarize_memory_with_gemini(content)
+            summarized_memory = await self._summarize_memory_with_gemini(content, user_name, character_id)
             
             # 使用新的路徑結構：/character_id/users/memory/user_id
             doc_ref = self.db.collection(character_id).document('users').collection('memory').document(user_id)
@@ -107,7 +107,7 @@ class MemoryManager:
             print(f"獲取記憶時發生錯誤: {e}")
             return []
 
-    async def _summarize_memory_with_gemini(self, content: str) -> str:
+    async def _summarize_memory_with_gemini(self, content: str, user_name: str = "使用者", character_id: str = "角色") -> str:
         """使用 Gemini API 整理和摘要記憶"""
         try:
             import google.generativeai as genai
@@ -123,30 +123,18 @@ class MemoryManager:
             
             # 改進的摘要提示 - 限制字串長度
             prompt = f"""
-You are a memory extraction assistant. From the conversation below, identify important information about the user, including: personal preferences, hobbies or interests, significant life events or experiences, emotional state or personality traits, relationships or interactions with other users, and any other facts worth remembering long-term.
+You are {character_id}, and you will extract important information from your conversations with {user_name}, including: personal preferences, hobbies or interests, significant life events or experiences, emotional states or personality traits, relationships or interactions with other users, and any other facts worth remembering in the long term.
+Each memory entry must be Less than 40 characters. Keep it brief and essential.
+Extract only information related to {user_name}, listing each point as a concise sentence, one per line, without numbering or formatting symbols.
 
 Conversation:
 {content}
 
-Please extract information related to the user, listing each point as a concise sentence, one per line, without numbering or formatting symbols.
-IMPORTANT: Each memory entry must be Less than 30 characters. Keep it brief and essential.
-
-Examples of what to extract:
-- User's interests, hobbies, or preferences
-- Personal experiences or life events mentioned
-- Emotional states or personality traits shown
-- Relationships with others
-- Communication style or patterns
-- Any personal details shared
-
-Examples of what NOT to extract:
-- General greetings like "hello", "hi"
-- Routine questions without personal context
-- Technical discussions without personal relevance
-
-If the conversation is very brief or contains no personal information, extract at least: "User engaged in conversation" or similar basic interaction note.
-
-Please provide at least one meaningful observation about the user from this conversation, keeping each entry under 30 characters.
+Example format:
+Enjoys watching anime
+Lives in Taipei
+Currently learning programming
+Has a good relationship with other users
 """
             
             response = model.generate_content(prompt)
@@ -155,14 +143,14 @@ Please provide at least one meaningful observation about the user from this conv
             # 檢查是否返回了 "None" 或空內容
             if not summarized or summarized.strip().lower() in ["none", "none.", "無", "無重要資訊"]:
                 print(f"⚠️ Gemini 返回空內容，使用備用記憶")
-                return f"使用者進行了對話互動：{content[:20]}……"
+                return f"使用者進行了對話互動：{content[:30]}……"
             
-            print(f"📋 記憶摘要完成：{summarized[:20]}……")
+            print(f"📋 記憶摘要完成：{summarized[:30]}……")
             return summarized
             
         except Exception as e:
             print(f"記憶摘要時發生錯誤: {e}")
-            return f"使用者進行了對話互動：{content[:20]}……"
+            return f"使用者進行了對話互動：{content[:30]}……"
 
     async def _consolidate_memories_with_gemini(self, memories: List[str], user_name: str = "使用者") -> str:
         """使用 Gemini API 將多則記憶統整成一則摘要（基於使用者的 compress_memories 方法）"""
@@ -189,10 +177,19 @@ Please provide at least one meaningful observation about the user from this conv
             
             # 使用使用者提供的 compress_memories 方法
             prompt = f"""
-Please condense the following {len(filtered_memories)} memories about {user_name} into a summary, no longer than 80 characters. Retain the most important traits, events, relationships, and interests. Present the summary as a concise sentence—do not use bullet points or numbering.
+You are a memory organization assistant. Please organize the following memories about {user_name} into a summary, removing duplicates and overly detailed content. Present the summary as a concise sentence, without bullet points or numbering. The summary must be no more than 300 characters long.
 
-記憶內容：
-{chr(10).join('- ' + m for m in filtered_memories)}
+Existing memories:
+{filtered_memories}
+
+Organize the summary using the following format:
+1. Merge similar memories (e.g., repeated mentions of interests or relationships)
+2. Remove redundant information
+3. Keep important personal traits and events
+4. Use concise sentences
+5. Avoid numbering or symbols, one key point per line
+
+Output the organized memory directly, without any introductory text.
 """
             
             model = genai.GenerativeModel("gemini-2.0-flash")  # type: ignore
