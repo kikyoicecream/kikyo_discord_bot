@@ -118,7 +118,7 @@ class CharacterBot:
             if not should_respond:
                 return
             
-            # 持續的 typing 狀態管理
+            # 立即開始 typing 狀態（在檢查回應之前就開始）
             typing_task = None
             
             async def maintain_typing():
@@ -130,8 +130,11 @@ class CharacterBot:
                 except asyncio.CancelledError:
                     pass  # 正常取消
             
-            # 啟動持續的 typing 任務
+            # 立即啟動持續的 typing 任務
             typing_task = asyncio.create_task(maintain_typing())
+            
+            # 給 typing 狀態一點時間啟動
+            await asyncio.sleep(0.1)
             
             try:
                 # 處理訊息（只使用自己的角色）

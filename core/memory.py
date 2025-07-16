@@ -281,7 +281,8 @@ Please respond as {character_name}, keeping in mind:
 - If there are other active users in the conversation, you can naturally mention them or respond to their presence.
 """
         
-        response = model.generate_content(system_prompt)
+        # 使用 asyncio.to_thread 讓同步的 generate_content 變成異步
+        response = await asyncio.to_thread(model.generate_content, system_prompt)
         return response.text if response.text else "「……」"
         
     except Exception as e:
