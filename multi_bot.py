@@ -93,7 +93,7 @@ class MultiBotLauncher:
         enabled_bots = [bot for bot in self.bots if bot['enabled']]
         
         print(f"\n🎭 啟動 {len(enabled_bots)} 個角色 Bot...")
-        print("=" * 60)
+        print("=" * 50)
         
         threads = []
         for bot in enabled_bots:

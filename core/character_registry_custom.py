@@ -64,7 +64,6 @@ class CharacterRegistry:
                     self.characters[character_id] = character_data
                     self.conversation_histories[character_id] = {}
                     self.active_users[character_id] = {}
-                    print(f"成功註冊角色: {character_id}")
                     return True
                 else:
                     print(f"角色 {character_id} 的設定資料為空")
