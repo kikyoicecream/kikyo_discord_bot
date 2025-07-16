@@ -38,17 +38,29 @@ class GroupConversationTracker:
             print(f"❌ 群組對話追蹤器 Firestore 連接失敗: {e}")
             return None
     
-    def track_user_activity(self, character_id: str, channel_id: int, user_id: int, user_name: str, message_content: str):
-        """追蹤使用者活動"""
-        if character_id not in self.active_users:
-            self.active_users[character_id] = {}
+    def _ensure_channel_context_exists(self, character_id: str, channel_id: int):
+        """確保頻道上下文存在"""
         if character_id not in self.channel_contexts:
             self.channel_contexts[character_id] = {}
             
-        if channel_id not in self.active_users[character_id]:
-            self.active_users[character_id][channel_id] = {}
         if channel_id not in self.channel_contexts[character_id]:
             self.channel_contexts[character_id][channel_id] = []
+    
+    def _add_to_conversation_context(self, character_id: str, channel_id: int, context_entry: dict):
+        """添加對話上下文並維護30則限制"""
+        self.channel_contexts[character_id][channel_id].append(context_entry)
+        
+        # 只保留最近30則對話記錄
+        if len(self.channel_contexts[character_id][channel_id]) > 30:
+            self.channel_contexts[character_id][channel_id] = self.channel_contexts[character_id][channel_id][-30:]
+    
+    def track_user_activity(self, character_id: str, channel_id: int, user_id: int, user_name: str, message_content: str):
+        """追蹤使用者活動"""
+        # 初始化活躍使用者結構
+        if character_id not in self.active_users:
+            self.active_users[character_id] = {}
+        if channel_id not in self.active_users[character_id]:
+            self.active_users[character_id][channel_id] = {}
         
         # 更新活躍使用者
         current_time = datetime.now()
@@ -61,6 +73,7 @@ class GroupConversationTracker:
         }
         
         # 添加對話上下文
+        self._ensure_channel_context_exists(character_id, channel_id)
         context_entry = {
             'user_id': user_id,
             'user_name': user_name,
@@ -68,22 +81,12 @@ class GroupConversationTracker:
             'timestamp': current_time,
             'is_bot': False
         }
-        
-        self.channel_contexts[character_id][channel_id].append(context_entry)
-        
-        # 只保留最近50則對話記錄
-        if len(self.channel_contexts[character_id][channel_id]) > 50:
-            self.channel_contexts[character_id][channel_id] = self.channel_contexts[character_id][channel_id][-50:]
+        self._add_to_conversation_context(character_id, channel_id, context_entry)
     
     def track_bot_response(self, character_id: str, channel_id: int, bot_name: str, response_content: str):
         """追蹤BOT回應"""
-        if character_id not in self.channel_contexts:
-            self.channel_contexts[character_id] = {}
-            
-        if channel_id not in self.channel_contexts[character_id]:
-            self.channel_contexts[character_id][channel_id] = []
-        
         # 添加BOT回應到對話上下文
+        self._ensure_channel_context_exists(character_id, channel_id)
         current_time = datetime.now()
         context_entry = {
             'user_id': 0,  # BOT的ID設為0
@@ -92,12 +95,7 @@ class GroupConversationTracker:
             'timestamp': current_time,
             'is_bot': True
         }
-        
-        self.channel_contexts[character_id][channel_id].append(context_entry)
-        
-        # 只保留最近50則對話記錄
-        if len(self.channel_contexts[character_id][channel_id]) > 50:
-            self.channel_contexts[character_id][channel_id] = self.channel_contexts[character_id][channel_id][-50:]
+        self._add_to_conversation_context(character_id, channel_id, context_entry)
     
     def get_active_users_in_channel(self, character_id: str, channel_id: int, minutes: int = 30) -> List[dict]:
         """獲取指定時間內在該頻道活躍的使用者"""
