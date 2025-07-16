@@ -18,7 +18,7 @@ TOKEN_ENV_VAR = "GU_BEICHEN_TOKEN"
 PROACTIVE_KEYWORDS = ["顧北辰", "gu_beichen", "顧", "北辰", "beichen"]
 
 # --- Gemini AI 參數設定 ---
-GEMINI_TEMPERATURE = 0.7      # 創造性：0.0-1.0 (較沈穩)
+GEMINI_TEMPERATURE = 0.7      # 創造性：0.0-2.0 (較沈穩)
 GEMINI_TOP_K = 30            # 詞彙多樣性：1-40 (適中)
 GEMINI_TOP_P = 0.9           # 核採樣：0.0-1.0 (較集中)
 

@@ -18,7 +18,7 @@ TOKEN_ENV_VAR = "SHEN_ZE_TOKEN"
 PROACTIVE_KEYWORDS = ["叔叔"]
 
 # --- Gemini AI 參數設定 ---
-GEMINI_TEMPERATURE = 1.0      # 創造性：0.0-1.0 (越高越有創意)
+GEMINI_TEMPERATURE = 1.0      # 創造性：0.0-2.0 (越高越有創意)
 GEMINI_TOP_K = 40            # 詞彙多樣性：1-40 (越高越多樣)
 GEMINI_TOP_P = 0.95          # 核採樣：0.0-1.0 (越高越集中)
 
