@@ -177,17 +177,18 @@ Has a good relationship with other users
             
             # 使用使用者提供的 compress_memories 方法
             prompt = f"""
-You are a memory organization assistant. Please organize the following memories about {user_name} into a summary, removing duplicates and overly detailed content. Present the summary as a concise sentence, without bullet points or numbering. The summary must be no more than 300 characters long.
+You are a memory organization assistant. Please organize the following memories about {user_name} into a summary.
 
 Existing memories:
 {filtered_memories}
 
 Organize the summary using the following format:
-1. Merge similar memories (e.g., repeated mentions of interests or relationships)
-2. Remove redundant information
-3. Keep important personal traits and events
-4. Use concise sentences
-5. Avoid numbering or symbols, one key point per line
+1. Must be less than 300 characters long.
+2. Merge similar memories (e.g., repeated mentions of interests or relationships)
+3. Remove redundant information
+4. Keep important personal traits and events
+5. Use concise sentences
+6. Avoid numbering or symbols, one key point per line
 
 Output the organized memory directly, without any introductory text.
 """
