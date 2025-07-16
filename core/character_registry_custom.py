@@ -136,10 +136,21 @@ class CharacterRegistry:
                     await message.channel.send("「想說什麼？我在聽。」")
             return True
         
-        # 開始打字狀態（手動管理）
-        typing = message.channel.typing()
-        await typing.__aenter__()
+        # 開始持續打字狀態（Discord每10秒會自動停止，需要重新啟動）
+        typing_task = None
+        async def keep_typing():
+            """持續維持打字狀態"""
+            try:
+                while True:
+                    async with message.channel.typing():
+                        await asyncio.sleep(8)  # 每8秒重新啟動打字狀態
+            except asyncio.CancelledError:
+                pass  # 正常取消
         
+        # 啟動持續打字任務
+        typing_task = asyncio.create_task(keep_typing())
+        
+        success = False
         try:
             # 獲取完整的角色資料
             character_data = self.characters.get(persona_id, {})
@@ -150,7 +161,8 @@ class CharacterRegistry:
                     await message.channel.send(f"{message.author.mention} 「抱歉，我的設定資料似乎有問題……」")
                 except Exception:
                     await message.channel.send("「抱歉，我的設定資料似乎有問題……」")
-                return True
+                success = True  # 已處理訊息
+                return  # 會到finally區塊停止打字狀態
                 
             # 提取需要的資訊
             user_name = message.author.display_name
@@ -242,6 +254,8 @@ class CharacterRegistry:
                 track_bot_response(character_id, channel_id, bot_name, response)
             except Exception as e:
                 print(f"追蹤BOT回應時發生錯誤：{e}")
+            
+            success = True  # 成功處理訊息
                 
         except Exception as e:
             print(f"處理訊息時發生錯誤：{e}")
@@ -254,8 +268,14 @@ class CharacterRegistry:
             except Exception:
                 # 最後的保險，直接發送到頻道
                 await message.channel.send("「抱歉，我現在有點累……」")
+            success = True  # 即使出錯也表示已處理訊息
         finally:
             # 確保停止打字狀態
-            await typing.__aexit__(None, None, None)
+            if typing_task and not typing_task.done():
+                typing_task.cancel()
+                try:
+                    await typing_task
+                except asyncio.CancelledError:
+                    pass  # 預期的取消錯誤
         
-        return True 
+        return success 
