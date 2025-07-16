@@ -39,7 +39,7 @@ class MultiBotLauncher:
     
     def check_tokens(self):
         """檢查必要的 Token 是否存在"""
-        print("🔍 檢查 Discord Token...")
+        print("🔍 檢查 Discord Token……")
         
         for bot in self.bots:
             if bot['enabled']:
@@ -62,13 +62,13 @@ class MultiBotLauncher:
         def run_bot():
             while self.running:
                 try:
-                    print(f"🚀 啟動 {bot_info['name']} Bot...")
+                    print(f"🚀 啟動 {bot_info['name']} Bot……")
                     process = subprocess.Popen([sys.executable, bot_info['file']])
                     bot_info['process'] = process
                     process.wait()
                     
                     if process.returncode == 26:
-                        print(f"🔄 {bot_info['name']} Bot 正在重啟...")
+                        print(f"🔄 {bot_info['name']} Bot 正在重啟……")
                         time.sleep(2)
                     else:
                         # 只有在非手動停止時才顯示停止訊息
@@ -92,7 +92,7 @@ class MultiBotLauncher:
         self.running = True
         enabled_bots = [bot for bot in self.bots if bot['enabled']]
         
-        print(f"\n🎭 啟動 {len(enabled_bots)} 個角色 Bot...")
+        print(f"\n🎭 啟動 {len(enabled_bots)} 個角色 Bot……")
         print("=" * 50)
         
         threads = []
@@ -106,23 +106,23 @@ class MultiBotLauncher:
             for thread in threads:
                 thread.join()
         except KeyboardInterrupt:
-            print("\n⏹️ 正在停止所有 Bot...")
+            print("\n⏹️ 正在停止所有 Bot……")
             self.stop_all_bots()
     
     def stop_all_bots(self):
         """停止所有 Bot"""
-        print("🛑 正在停止所有 Bot...")
+        print("🛑 正在停止所有 Bot……")
         self.running = False
         
         for bot in self.bots:
             if bot['process'] and bot['process'].poll() is None:
                 try:
-                    print(f"⏹️ 正在停止 {bot['name']} Bot...")
+                    print(f"⏹️ 正在停止 {bot['name']} Bot……")
                     bot['process'].terminate()
                     bot['process'].wait(timeout=5)
                     print(f"✅ {bot['name']} Bot 已停止")
                 except:
-                    print(f"🔴 強制停止 {bot['name']} Bot...")
+                    print(f"🔴 強制停止 {bot['name']} Bot……")
                     bot['process'].kill()
                     print(f"✅ {bot['name']} Bot 已強制停止")
     
@@ -174,7 +174,7 @@ class MultiBotLauncher:
             print(f"{i}. {bot['name']}: {status}")
         
         try:
-            choice = int(input("\n選擇要切換的 Bot (輸入數字): ")) - 1
+            choice = int(input("\n選擇要切換的 Bot (輸入數字)：")) - 1
             if 0 <= choice < len(self.bots):
                 bot = self.bots[choice]
                 bot['enabled'] = not bot['enabled']

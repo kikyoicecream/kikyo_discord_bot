@@ -84,12 +84,10 @@ class CharacterRegistry:
         import json
         try:
             formatted_data = json.dumps(character_data, ensure_ascii=False, indent=2)
-            print(f"🔧 格式化角色資料 for {character_data.get('name', '未知')}:")
-            print(f"   欄位數量: {len(character_data)}")
-            print(f"   總長度: {len(formatted_data)} 字符")
+            print(f"🔧 {character_data.get('name', '未知')}角色資料：{len(character_data)} 欄，總長度 {len(formatted_data)} 字符")
             return formatted_data
         except Exception as e:
-            print(f"❌ 格式化角色資料失敗: {e}")
+            print(f"❌ 格式化角色資料失敗：{e}")
             return str(character_data)
 
     def get_character_setting(self, character_id: str, setting_key: str, default_value=None):
@@ -137,7 +135,7 @@ class CharacterRegistry:
                 # 獲取完整的角色資料
                 character_data = self.characters.get(persona_id, {})
                 if not character_data:
-                    await message.reply("「抱歉，我的設定資料似乎有問題...」", mention_author=False)
+                    await message.reply("「抱歉，我的設定資料似乎有問題……」", mention_author=False)
                     return True
                 
                 # 提取需要的資訊
@@ -185,10 +183,10 @@ class CharacterRegistry:
                     from core.group_conversation_tracker import track_bot_response
                     track_bot_response(character_id, channel_id, bot_name, response)
                 except Exception as e:
-                    print(f"追蹤BOT回應時發生錯誤: {e}")
+                    print(f"追蹤BOT回應時發生錯誤：{e}")
                 
             except Exception as e:
-                print(f"處理訊息時發生錯誤: {e}")
-                await message.reply("「抱歉，我現在有點累...」", mention_author=False)
+                print(f"處理訊息時發生錯誤：{e}")
+                await message.reply("「抱歉，我現在有點累……」", mention_author=False)
         
         return True 

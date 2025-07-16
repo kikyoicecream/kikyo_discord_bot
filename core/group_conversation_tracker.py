@@ -35,7 +35,7 @@ class GroupConversationTracker:
             print("✅ 群組對話追蹤器 Firestore 連接成功")
             return db
         except Exception as e:
-            print(f"❌ 群組對話追蹤器 Firestore 連接失敗: {e}")
+            print(f"❌ 群組對話追蹤器 Firestore 連接失敗：{e}")
             return None
     
     def _ensure_channel_context_exists(self, character_id: str, channel_id: int):

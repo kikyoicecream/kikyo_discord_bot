@@ -64,9 +64,9 @@ class CharacterBot:
             # 註冊角色
             success = self.character_registry.register_character(self.character_id)
             if success:
-                print(f"✅ 成功註冊角色: {self.character_id}")
+                print(f"✅ 成功註冊角色：{self.character_id}")
             else:
-                print(f"❌ 註冊角色失敗: {self.character_id}")
+                print(f"❌ 註冊角色失敗：{self.character_id}")
             
             # 同步指令
             try:
@@ -78,7 +78,7 @@ class CharacterBot:
                     synced = await self.tree.sync()
                     print(f"已全域同步 {len(synced)} 個指令。")
             except Exception as e:
-                print(f"同步指令失敗: {e}")
+                print(f"同步指令失敗：{e}")
         
         @self.client.event
         async def on_message(message):
@@ -182,7 +182,7 @@ class CharacterBot:
                     for i, user in enumerate(active_users[:5], 1):  # 最多顯示5個使用者
                         embed.add_field(
                             name=f"{i}. {user['name']}",
-                            value=f"訊息數: {user['message_count']}\n最後活動: {user['last_activity'].strftime('%H:%M:%S')}",
+                            value=f"訊息數：{user['message_count']}\n最後活動：{user['last_activity'].strftime('%H:%M:%S')}",
                             inline=True
                         )
                 else:
@@ -204,7 +204,7 @@ class CharacterBot:
             self.client.run(self.token)
             return True
         except Exception as e:
-            print(f"❌ {self.character_id} Bot 運行時發生錯誤: {e}")
+            print(f"❌ {self.character_id} Bot 運行時發生錯誤：{e}")
             return False
 
 def run_character_bot_with_restart(character_id: str, token_env_var: str, proactive_keywords: Optional[List[str]] = None):

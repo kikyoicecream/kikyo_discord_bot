@@ -34,7 +34,7 @@ class MemoryManager:
             print("✅ Firestore 連接成功")
             return db
         except Exception as e:
-            print(f"❌ Firestore 連接失敗: {e}")
+            print(f"❌ Firestore 連接失敗：{e}")
             return None
     
     async def save_character_user_memory(self, character_id: str, user_id: str, content: str, user_name: str = "使用者"):
@@ -66,7 +66,7 @@ class MemoryManager:
             
             # 當記憶超過30則時，統整成一則摘要
             if len(memories) > 30:
-                print(f"📋 記憶超過30則，正在統整記憶...")
+                print(f"📋 記憶超過30則，正在統整記憶……")
                 consolidated_memory = await self._consolidate_memories_with_gemini(memories, user_name)
                 memories = [consolidated_memory]  # 只保留統整後的記憶
                 print(f"✅ 記憶已統整完成，現在只有1則統整記憶")
@@ -155,14 +155,14 @@ Please provide at least one meaningful observation about the user from this conv
             # 檢查是否返回了 "None" 或空內容
             if not summarized or summarized.strip().lower() in ["none", "none.", "無", "無重要資訊"]:
                 print(f"⚠️ Gemini 返回空內容，使用備用記憶")
-                return f"使用者進行了對話互動：{content[:100]}..."
+                return f"使用者進行了對話互動：{content[:100]}……"
             
-            print(f"📋 記憶摘要完成：{summarized[:50]}...")
+            print(f"📋 記憶摘要完成：{summarized[:50]}……")
             return summarized
             
         except Exception as e:
             print(f"記憶摘要時發生錯誤: {e}")
-            return f"使用者進行了對話互動：{content[:100]}..."
+            return f"使用者進行了對話互動：{content[:100]}……"
 
     async def _consolidate_memories_with_gemini(self, memories: List[str], user_name: str = "使用者") -> str:
         """使用 Gemini API 將多則記憶統整成一則摘要（基於使用者的 compress_memories 方法）"""
@@ -230,7 +230,7 @@ async def generate_character_response(character_name: str, character_persona: st
         # 設定 Google AI
         api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
-            return "「抱歉，我現在無法思考...」"
+            return "「抱歉，我現在無法思考……」"
             
         genai.configure(api_key=api_key)  # type: ignore
         model = genai.GenerativeModel('gemini-2.5-flash')  # type: ignore
@@ -274,7 +274,7 @@ async def generate_character_response(character_name: str, character_persona: st
                         group_context += f"\n\n最近對話記錄：\n" + "\n".join(conversation_lines)
                         
             except Exception as e:
-                print(f"獲取群組上下文時發生錯誤: {e}")
+                print(f"獲取群組上下文時發生錯誤：{e}")
                 group_context = ""
             
         # 建構提示
@@ -308,8 +308,8 @@ Please respond as {character_name}, keeping in mind:
 """
         
         response = model.generate_content(system_prompt)
-        return response.text if response.text else "「...」"
+        return response.text if response.text else "「……」"
         
     except Exception as e:
-        print(f"生成回應時發生錯誤: {e}")
-        return "「抱歉，我現在有點累...」" 
+        print(f"生成回應時發生錯誤：{e}")
+        return "「抱歉，我現在有點累……」" 
