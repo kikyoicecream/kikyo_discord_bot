@@ -37,8 +37,8 @@ class MemoryManager:
             print(f"❌ Firestore 連接失敗: {e}")
             return None
     
-    async def save_character_user_memory(self, character_id: str, user_id: str, content: str, user_name: str = "用戶"):
-        """保存角色與用戶的對話記憶（陣列模式）"""
+    async def save_character_user_memory(self, character_id: str, user_id: str, content: str, user_name: str = "使用者"):
+        """保存角色與使用者的對話記憶（陣列模式）"""
         if not self.db:
             print("❌ Firestore 資料庫連接失敗，無法保存記憶")
             return False
@@ -59,17 +59,17 @@ class MemoryManager:
                 memories = data.get('memories', []) if data else []
             else:
                 memories = []
-                print(f"🆕 為用戶 {user_id} 創建新的記憶文檔")
+                print(f"🆕 為使用者 {user_id} 創建新的記憶文檔")
             
             # 將摘要內容添加到 memories 陣列中
             memories.append(summarized_memory)
             
-            # 當記憶超過30條時，統整成一則摘要
+            # 當記憶超過30則時，統整成一則摘要
             if len(memories) > 30:
-                print(f"📋 記憶超過30條，正在統整記憶...")
+                print(f"📋 記憶超過30則，正在統整記憶...")
                 consolidated_memory = await self._consolidate_memories_with_gemini(memories, user_name)
                 memories = [consolidated_memory]  # 只保留統整後的記憶
-                print(f"✅ 記憶已統整完成，現在只有1條統整記憶")
+                print(f"✅ 記憶已統整完成，現在只有1則統整記憶")
             
             # 保存到 Firestore - 陣列格式
             doc_ref.set({
@@ -77,7 +77,7 @@ class MemoryManager:
                 'memories': memories
             })
             
-            print(f"✅ 記憶保存成功：{len(memories)} 條記憶已保存到 /{character_id}/users/memory/{user_id}")
+            print(f"✅ 記憶保存成功：{len(memories)} 則記憶已保存到 /{character_id}/users/memory/{user_id}")
             return True
             
         except Exception as e:
@@ -85,7 +85,7 @@ class MemoryManager:
             return False
 
     def get_character_user_memory(self, character_id: str, user_id: str, limit: int = 10) -> List[str]:
-        """獲取角色與用戶的對話記憶（陣列格式）"""
+        """獲取角色與使用者的對話記憶（陣列格式）"""
         if not self.db:
             return []
             
@@ -121,35 +121,51 @@ class MemoryManager:
             genai.configure(api_key=api_key)  # type: ignore
             model = genai.GenerativeModel('gemini-2.0-flash')  # type: ignore
             
-            # 摘要提示
+            # 改進的摘要提示
             prompt = f"""
 You are a memory extraction assistant. From the conversation below, identify important information about the user, including: personal preferences, hobbies or interests, significant life events or experiences, emotional state or personality traits, relationships or interactions with other users, and any other facts worth remembering long-term.
 
 Conversation:
 {content}
 
-Please extract only information related to the user, listing each point as a concise sentence, one per line, without numbering or formatting symbols.
-If there is no important information worth remembering, reply with "None."
+Please extract information related to the user, listing each point as a concise sentence, one per line, without numbering or formatting symbols.
+If the conversation contains general chat, casual greetings, or routine interactions without specific personal information, extract at least one general observation about the user's communication style or interaction pattern.
 
-Example format:
-Enjoys watching anime
-Lives in Taipei
-Currently learning programming
-Has a good relationship with other users
+Examples of what to extract:
+- User's interests, hobbies, or preferences
+- Personal experiences or life events mentioned
+- Emotional states or personality traits shown
+- Relationships with others
+- Communication style or patterns
+- Any personal details shared
+
+Examples of what NOT to extract:
+- General greetings like "hello", "hi"
+- Routine questions without personal context
+- Technical discussions without personal relevance
+
+If the conversation is very brief or contains no personal information, extract at least: "User engaged in conversation" or similar basic interaction note.
+
+Please provide at least one meaningful observation about the user from this conversation.
 """
             
             response = model.generate_content(prompt)
             summarized = response.text if response.text else content
             
-            print(f"📋 記憶摘要完成：{summarized[:30]}...")
+            # 檢查是否返回了 "None" 或空內容
+            if not summarized or summarized.strip().lower() in ["none", "none.", "無", "無重要資訊"]:
+                print(f"⚠️ Gemini 返回空內容，使用備用記憶")
+                return f"使用者進行了對話互動：{content[:100]}..."
+            
+            print(f"📋 記憶摘要完成：{summarized[:50]}...")
             return summarized
             
         except Exception as e:
             print(f"記憶摘要時發生錯誤: {e}")
-            return content
+            return f"使用者進行了對話互動：{content[:100]}..."
 
-    async def _consolidate_memories_with_gemini(self, memories: List[str], user_name: str = "用戶") -> str:
-        """使用 Gemini API 將多條記憶統整成一則摘要（基於用戶的 compress_memories 方法）"""
+    async def _consolidate_memories_with_gemini(self, memories: List[str], user_name: str = "使用者") -> str:
+        """使用 Gemini API 將多則記憶統整成一則摘要（基於使用者的 compress_memories 方法）"""
         try:
             import google.generativeai as genai
             
@@ -158,24 +174,34 @@ Has a good relationship with other users
             if not api_key:
                 print("⚠️ 未找到 GOOGLE_API_KEY，使用簡單合併")
                 return "\n".join(memories)
-                
+            
+            # 過濾掉 None 或無意義的記憶
+            filtered_memories = []
+            for memory in memories:
+                if memory and memory.strip().lower() not in ["none", "none.", "無", "無重要資訊"]:
+                    filtered_memories.append(memory)
+            
+            if not filtered_memories:
+                print("⚠️ 所有記憶都是 None，使用備用統整")
+                return f"與 {user_name} 有過多次對話互動"
+            
             genai.configure(api_key=api_key)  # type: ignore
             
-            # 使用用戶提供的 compress_memories 方法
+            # 使用使用者提供的 compress_memories 方法
             prompt = f"""
-Please condense the following {len(memories)} memories about {user_name} into a summary, no longer than 100 tokens. Retain the most important traits, events, relationships, and interests. Present the summary as a narrative paragraph—do not use bullet points or numbering.
+Please condense the following {len(filtered_memories)} memories about {user_name} into a summary, no longer than 100 tokens. Retain the most important traits, events, relationships, and interests. Present the summary as a narrative paragraph—do not use bullet points or numbering.
 
 記憶內容：
-{chr(10).join('- ' + m for m in memories)}
+{chr(10).join('- ' + m for m in filtered_memories)}
 """
             
             model = genai.GenerativeModel("models/gemini-2.0-flash")  # type: ignore
             response = await asyncio.to_thread(model.generate_content, prompt)
             consolidated = response.text.strip() if response.text else ""
             
-            if not consolidated:
+            if not consolidated or consolidated.strip().lower() in ["none", "none.", "無", "無重要資訊"]:
                 # 如果沒有回應，使用簡單合併
-                consolidated = "\n".join(memories)
+                consolidated = f"與 {user_name} 有過多次對話互動，包括：{', '.join(filtered_memories[:3])}"
             
             print(f"📋 記憶統整完成：{len(consolidated)} 字符")
             return consolidated
@@ -183,20 +209,20 @@ Please condense the following {len(memories)} memories about {user_name} into a 
         except Exception as e:
             print(f"記憶統整時發生錯誤: {e}")
             # 如果統整失敗，返回所有記憶的簡單合併
-            return "\n".join(memories)
+            return f"與 {user_name} 有過多次對話互動"
 
 # 全域記憶管理器實例
 _memory_manager = MemoryManager()
 
-async def save_character_user_memory(character_id: str, user_id: str, content: str, user_name: str = "用戶"):
-    """保存角色與用戶的對話記憶"""
+async def save_character_user_memory(character_id: str, user_id: str, content: str, user_name: str = "使用者"):
+    """保存角色與使用者的對話記憶"""
     return await _memory_manager.save_character_user_memory(character_id, user_id, content, user_name)
 
 def get_character_user_memory(character_id: str, user_id: str, limit: int = 10) -> List[str]:
-    """獲取角色與用戶的對話記憶"""
+    """獲取角色與使用者的對話記憶"""
     return _memory_manager.get_character_user_memory(character_id, user_id, limit)
 
-async def generate_character_response(character_name: str, character_persona: str, user_memories: List[str], user_prompt: str, user_display_name: str) -> str:
+async def generate_character_response(character_name: str, character_persona: str, user_memories: List[str], user_prompt: str, user_display_name: str, channel_id: Optional[int] = None, character_id: Optional[str] = None) -> str:
     """生成角色回應"""
     try:
         import google.generativeai as genai
@@ -212,9 +238,44 @@ async def generate_character_response(character_name: str, character_persona: st
         # 建構記憶內容
         memory_context = ""
         if user_memories:
-            memory_context = "\n".join(user_memories[-5:])  # 最近5條記憶
+            memory_context = "\n".join(user_memories[-5:])  # 最近5則記憶
         else:
             memory_context = "暫無記憶"
+        
+        # 建構群組對話上下文
+        group_context = ""
+        if channel_id and character_id:
+            try:
+                from core.group_conversation_tracker import get_conversation_summary, get_active_users_in_channel, get_recent_conversation_context
+                group_summary = get_conversation_summary(character_id, channel_id)
+                active_users = get_active_users_in_channel(character_id, channel_id, 30)
+                recent_context = get_recent_conversation_context(character_id, channel_id, 10)  # 獲取最近10則對話
+                
+                if active_users:
+                    # 過濾掉當前使用者
+                    other_users = [user for user in active_users if user['name'] != user_display_name]
+                    if other_users:
+                        other_user_names = [user['name'] for user in other_users[:3]]  # 最多3個其他使用者
+                        group_context = f"群組對話情況：{group_summary}\n其他活躍使用者：{', '.join(other_user_names)}"
+                    else:
+                        group_context = f"群組對話情況：{group_summary}"
+                
+                # 添加最近的對話上下文（包含BOT回應）
+                if recent_context:
+                    conversation_lines = []
+                    for context in recent_context[-8:]:  # 最近8則對話
+                        if context['message'] and len(context['message']) > 5:
+                            if context.get('is_bot', False):
+                                conversation_lines.append(f"{context['user_name']}：{context['message']}")
+                            else:
+                                conversation_lines.append(f"{context['user_name']}：{context['message']}")
+                    
+                    if conversation_lines:
+                        group_context += f"\n\n最近對話記錄：\n" + "\n".join(conversation_lines)
+                        
+            except Exception as e:
+                print(f"獲取群組上下文時發生錯誤: {e}")
+                group_context = ""
             
         # 建構提示
         system_prompt = f"""You are {character_name}, participating in a multi-person conversation.
@@ -228,7 +289,7 @@ Always place all character dialogue inside full-width quotation marks「」. Con
 {character_persona}
 
 ## 群組對話情況
-- The user who was just talking to you: {user_display_name}
+{group_context if group_context else f"- 當前與我對話的使用者: {user_display_name}"}
 
 ## 關於 {user_display_name} 的長期記憶
 {memory_context}
@@ -243,6 +304,7 @@ Please respond as {character_name}, keeping in mind:
 - Proper line breaks for readability.
 - Naturally reference other users based on memory and context.
 - Maintain continuity and a sense of realism throughout the conversation.
+- If there are other active users in the conversation, you can naturally mention them or respond to their presence.
 """
         
         response = model.generate_content(system_prompt)

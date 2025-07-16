@@ -149,10 +149,50 @@ class CharacterBot:
                 title=f"📊 {self.character_id} 記憶統計",
                 color=discord.Color.green()
             )
-            embed.add_field(name="記憶數量", value=f"{memory_count} 條", inline=True)
+            embed.add_field(name="記憶數量", value=f"{memory_count} 則", inline=True)
             embed.add_field(name="總字符數", value=f"{total_chars} 字符", inline=True)
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
+        
+        @self.tree.command(name="active_users", description=f"顯示 {self.character_id} 的活躍使用者")
+        async def active_users(interaction: discord.Interaction):
+            """顯示活躍使用者"""
+            if not self.bot_owner_ids or interaction.user.id not in self.bot_owner_ids:
+                await interaction.response.send_message("❌ 你沒有權限使用此指令。", ephemeral=True)
+                return
+            
+            try:
+                from core.group_conversation_tracker import get_active_users_in_channel, get_conversation_summary
+                
+                channel_id = interaction.channel_id
+                if channel_id is None:
+                    await interaction.response.send_message("❌ 無法獲取頻道資訊。", ephemeral=True)
+                    return
+                    
+                active_users = get_active_users_in_channel(self.character_id, channel_id, 30)
+                conversation_summary = get_conversation_summary(self.character_id, channel_id)
+                
+                embed = discord.Embed(
+                    title=f"👥 {self.character_id} 活躍使用者",
+                    description=conversation_summary,
+                    color=discord.Color.blue()
+                )
+                
+                if active_users:
+                    for i, user in enumerate(active_users[:5], 1):  # 最多顯示5個使用者
+                        embed.add_field(
+                            name=f"{i}. {user['name']}",
+                            value=f"訊息數: {user['message_count']}\n最後活動: {user['last_activity'].strftime('%H:%M:%S')}",
+                            inline=True
+                        )
+                else:
+                    embed.add_field(name="狀態", value="目前沒有活躍使用者", inline=False)
+                
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                
+            except Exception as e:
+                print(f"獲取活躍使用者時發生錯誤: {e}")
+                await interaction.response.send_message("❌ 獲取活躍使用者資訊時發生錯誤。", ephemeral=True)
     
     def run(self):
         """運行 Bot"""

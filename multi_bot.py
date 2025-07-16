@@ -71,7 +71,9 @@ class MultiBotLauncher:
                         print(f"🔄 {bot_info['name']} Bot 正在重啟...")
                         time.sleep(2)
                     else:
-                        print(f"⏹️ {bot_info['name']} Bot 已停止")
+                        # 只有在非手動停止時才顯示停止訊息
+                        if self.running:
+                            print(f"⏹️ {bot_info['name']} Bot 已停止")
                         break
                         
                 except Exception as e:
@@ -109,17 +111,20 @@ class MultiBotLauncher:
     
     def stop_all_bots(self):
         """停止所有 Bot"""
+        print("🛑 正在停止所有 Bot...")
         self.running = False
         
         for bot in self.bots:
             if bot['process'] and bot['process'].poll() is None:
                 try:
+                    print(f"⏹️ 正在停止 {bot['name']} Bot...")
                     bot['process'].terminate()
                     bot['process'].wait(timeout=5)
-                    print(f"⏹️ {bot['name']} Bot 已停止")
+                    print(f"✅ {bot['name']} Bot 已停止")
                 except:
+                    print(f"🔴 強制停止 {bot['name']} Bot...")
                     bot['process'].kill()
-                    print(f"🔴 強制停止 {bot['name']} Bot")
+                    print(f"✅ {bot['name']} Bot 已強制停止")
     
     def show_status(self):
         """顯示所有 Bot 狀態"""

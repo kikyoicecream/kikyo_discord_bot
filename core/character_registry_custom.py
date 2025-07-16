@@ -148,19 +148,28 @@ class CharacterRegistry:
                 target_nick = character_data.get('name', persona_id)
                 bot_name = target_nick or persona_id
                 
+                # 追蹤使用者活動（新增）
+                try:
+                    from core.group_conversation_tracker import track_user_activity
+                    track_user_activity(character_id, channel_id, message.author.id, user_name, user_prompt)
+                except Exception as e:
+                    print(f"追蹤使用者活動時發生錯誤: {e}")
+                
                 # 格式化角色描述供 AI 使用
                 character_persona = self._format_character_data(character_data)
                 
-                # 使用 memory.py 中的功能獲取用戶記憶
+                # 使用 memory.py 中的功能獲取使用者記憶
                 user_memories = memory.get_character_user_memory(persona_id, user_id)
                 
-                # 使用 memory.py 中的功能生成回應
+                # 使用 memory.py 中的功能生成回應（包含群組上下文）
                 response = await memory.generate_character_response(
                     bot_name, 
                     character_persona, 
                     user_memories, 
                     user_prompt, 
-                    user_name
+                    user_name,
+                    channel_id,
+                    character_id
                 )
                 
                 # 使用 memory.py 中的功能保存記憶
@@ -171,6 +180,13 @@ class CharacterRegistry:
                 
                 # 發送回應
                 await message.reply(response, mention_author=False)
+                
+                # 追蹤BOT自己的回應（新增）
+                try:
+                    from core.group_conversation_tracker import track_bot_response
+                    track_bot_response(character_id, channel_id, bot_name, response)
+                except Exception as e:
+                    print(f"追蹤BOT回應時發生錯誤: {e}")
                 
             except Exception as e:
                 print(f"處理訊息時發生錯誤: {e}")
