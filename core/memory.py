@@ -6,6 +6,7 @@
 
 import json
 import os
+import asyncio
 from datetime import datetime
 from typing import Dict, List, Optional
 from google.cloud import firestore
@@ -36,8 +37,8 @@ class MemoryManager:
             print(f"❌ Firestore 連接失敗: {e}")
             return None
     
-    async def save_character_user_memory(self, character_id: str, user_id: str, content: str):
-        """保存角色與用戶的對話記憶（字串模式）"""
+    async def save_character_user_memory(self, character_id: str, user_id: str, content: str, user_name: str = "用戶"):
+        """保存角色與用戶的對話記憶（陣列模式）"""
         if not self.db:
             print("❌ Firestore 資料庫連接失敗，無法保存記憶")
             return False
@@ -55,40 +56,38 @@ class MemoryManager:
             doc = doc_ref.get()  # type: ignore
             if doc.exists:
                 data = doc.to_dict()
-                existing_memory = data.get('memory_text', '') if data else ''
+                memories = data.get('memories', []) if data else []
             else:
-                existing_memory = ''
+                memories = []
                 print(f"🆕 為用戶 {user_id} 創建新的記憶文檔")
             
-            # 將新記憶拼接到現有記憶後面
-            if existing_memory:
-                new_memory_text = existing_memory + '\n' + summarized_memory
-            else:
-                new_memory_text = summarized_memory
+            # 將摘要內容添加到 memories 陣列中
+            memories.append(summarized_memory)
             
-            # 控制記憶長度（避免過長）
-            max_length = 5000  # 最大字符數
-            if len(new_memory_text) > max_length:
-                # 保留最後的內容
-                new_memory_text = new_memory_text[-max_length:]
+            # 當記憶超過30條時，統整成一則摘要
+            if len(memories) > 30:
+                print(f"📋 記憶超過30條，正在統整記憶...")
+                consolidated_memory = await self._consolidate_memories_with_gemini(memories, user_name)
+                memories = [consolidated_memory]  # 只保留統整後的記憶
+                print(f"✅ 記憶已統整完成，現在只有1條統整記憶")
             
-            # 保存到 Firestore - 字串格式
+            # 保存到 Firestore - 陣列格式
             doc_ref.set({
                 'last_updated': datetime.now(),
-                'memory_text': new_memory_text
+                'memories': memories
             })
             
-            print(f"✅ 記憶保存成功：{len(new_memory_text)} 字符已保存到 /{character_id}/users/memory/{user_id}")
+            print(f"✅ 記憶保存成功：{len(memories)} 條記憶已保存到 /{character_id}/users/memory/{user_id}")
             return True
             
         except Exception as e:
             print(f"保存記憶時發生錯誤: {e}")
             return False
 
-    def get_character_user_memory(self, character_id: str, user_id: str) -> str:
-        """獲取角色與用戶的對話記憶（字串格式）"""
+    def get_character_user_memory(self, character_id: str, user_id: str, limit: int = 10) -> List[str]:
+        """獲取角色與用戶的對話記憶（陣列格式）"""
         if not self.db:
-            return ""
+            return []
             
         try:
             # 使用新的路徑結構：/character_id/users/memory/user_id
@@ -97,14 +96,16 @@ class MemoryManager:
             
             if doc.exists:
                 data = doc.to_dict()
-                memory_text = data.get('memory_text', '') if data else ''
-                return memory_text
+                memories = data.get('memories', []) if data else []
+                
+                # 返回最近的記憶
+                return memories[-limit:] if memories else []
             else:
-                return ""
+                return []
                 
         except Exception as e:
             print(f"獲取記憶時發生錯誤: {e}")
-            return ""
+            return []
 
     async def _summarize_memory_with_gemini(self, content: str) -> str:
         """使用 Gemini API 整理和摘要記憶"""
@@ -147,18 +148,55 @@ Has a good relationship with other users
             print(f"記憶摘要時發生錯誤: {e}")
             return content
 
+    async def _consolidate_memories_with_gemini(self, memories: List[str], user_name: str = "用戶") -> str:
+        """使用 Gemini API 將多條記憶統整成一則摘要（基於用戶的 compress_memories 方法）"""
+        try:
+            import google.generativeai as genai
+            
+            # 設定 Google AI
+            api_key = os.getenv("GOOGLE_API_KEY")
+            if not api_key:
+                print("⚠️ 未找到 GOOGLE_API_KEY，使用簡單合併")
+                return "\n".join(memories)
+                
+            genai.configure(api_key=api_key)  # type: ignore
+            
+            # 使用用戶提供的 compress_memories 方法
+            prompt = f"""
+Please condense the following {len(memories)} memories about {user_name} into a summary, no longer than 100 tokens. Retain the most important traits, events, relationships, and interests. Present the summary as a narrative paragraph—do not use bullet points or numbering.
+
+記憶內容：
+{chr(10).join('- ' + m for m in memories)}
+"""
+            
+            model = genai.GenerativeModel("models/gemini-2.0-flash")  # type: ignore
+            response = await asyncio.to_thread(model.generate_content, prompt)
+            consolidated = response.text.strip() if response.text else ""
+            
+            if not consolidated:
+                # 如果沒有回應，使用簡單合併
+                consolidated = "\n".join(memories)
+            
+            print(f"📋 記憶統整完成：{len(consolidated)} 字符")
+            return consolidated
+            
+        except Exception as e:
+            print(f"記憶統整時發生錯誤: {e}")
+            # 如果統整失敗，返回所有記憶的簡單合併
+            return "\n".join(memories)
+
 # 全域記憶管理器實例
 _memory_manager = MemoryManager()
 
-async def save_character_user_memory(character_id: str, user_id: str, content: str):
+async def save_character_user_memory(character_id: str, user_id: str, content: str, user_name: str = "用戶"):
     """保存角色與用戶的對話記憶"""
-    return await _memory_manager.save_character_user_memory(character_id, user_id, content)
+    return await _memory_manager.save_character_user_memory(character_id, user_id, content, user_name)
 
-def get_character_user_memory(character_id: str, user_id: str) -> str:
+def get_character_user_memory(character_id: str, user_id: str, limit: int = 10) -> List[str]:
     """獲取角色與用戶的對話記憶"""
-    return _memory_manager.get_character_user_memory(character_id, user_id)
+    return _memory_manager.get_character_user_memory(character_id, user_id, limit)
 
-async def generate_character_response(character_name: str, character_persona: str, user_memory: str, user_prompt: str, user_display_name: str) -> str:
+async def generate_character_response(character_name: str, character_persona: str, user_memories: List[str], user_prompt: str, user_display_name: str) -> str:
     """生成角色回應"""
     try:
         import google.generativeai as genai
@@ -172,7 +210,11 @@ async def generate_character_response(character_name: str, character_persona: st
         model = genai.GenerativeModel('gemini-2.5-flash')  # type: ignore
         
         # 建構記憶內容
-        memory_context = user_memory if user_memory else "暫無記憶"
+        memory_context = ""
+        if user_memories:
+            memory_context = "\n".join(user_memories[-5:])  # 最近5條記憶
+        else:
+            memory_context = "暫無記憶"
             
         # 建構提示
         system_prompt = f"""You are {character_name}, participating in a multi-person conversation.

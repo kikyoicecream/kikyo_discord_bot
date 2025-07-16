@@ -119,20 +119,20 @@ class CharacterRegistry:
                 character_persona = self.get_character_setting(persona_id, 'persona', '') or ''
                 
                 # 使用 memory.py 中的功能獲取用戶記憶
-                user_memory = memory.get_character_user_memory(persona_id, str(message.author.id))
+                user_memories = memory.get_character_user_memory(persona_id, str(message.author.id))
                 
                 # 使用 memory.py 中的功能生成回應
                 response = await memory.generate_character_response(
                     str(character_name), 
                     str(character_persona), 
-                    user_memory, 
+                    user_memories, 
                     user_prompt, 
                     message.author.display_name
                 )
                 
                 # 使用 memory.py 中的功能保存記憶
                 memory_content = f"{message.author.display_name} 說：{user_prompt}"
-                save_success = await memory.save_character_user_memory(persona_id, str(message.author.id), memory_content)
+                save_success = await memory.save_character_user_memory(persona_id, str(message.author.id), memory_content, message.author.display_name)
                 if not save_success:
                     print(f"⚠️ 記憶保存失敗：{persona_id} - {message.author.id}")
                 
