@@ -121,7 +121,7 @@ class MemoryManager:
             genai.configure(api_key=api_key)  # type: ignore
             model = genai.GenerativeModel('gemini-2.0-flash')  # type: ignore
             
-            # 改進的摘要提示
+            # 改進的摘要提示 - 限制字串長度
             prompt = f"""
 You are a memory extraction assistant. From the conversation below, identify important information about the user, including: personal preferences, hobbies or interests, significant life events or experiences, emotional state or personality traits, relationships or interactions with other users, and any other facts worth remembering long-term.
 
@@ -129,7 +129,7 @@ Conversation:
 {content}
 
 Please extract information related to the user, listing each point as a concise sentence, one per line, without numbering or formatting symbols.
-If the conversation contains general chat, casual greetings, or routine interactions without specific personal information, extract at least one general observation about the user's communication style or interaction pattern.
+IMPORTANT: Each memory entry must be Less than 50 characters. Keep it brief and essential.
 
 Examples of what to extract:
 - User's interests, hobbies, or preferences
@@ -146,7 +146,7 @@ Examples of what NOT to extract:
 
 If the conversation is very brief or contains no personal information, extract at least: "User engaged in conversation" or similar basic interaction note.
 
-Please provide at least one meaningful observation about the user from this conversation.
+Please provide at least one meaningful observation about the user from this conversation, keeping each entry under 50 characters.
 """
             
             response = model.generate_content(prompt)
@@ -189,7 +189,7 @@ Please provide at least one meaningful observation about the user from this conv
             
             # 使用使用者提供的 compress_memories 方法
             prompt = f"""
-Please condense the following {len(filtered_memories)} memories about {user_name} into a summary, no longer than 100 tokens. Retain the most important traits, events, relationships, and interests. Present the summary as a narrative paragraph—do not use bullet points or numbering.
+Please condense the following {len(filtered_memories)} memories about {user_name} into a summary, no longer than 80 characters. Retain the most important traits, events, relationships, and interests. Present the summary as a concise sentence—do not use bullet points or numbering.
 
 記憶內容：
 {chr(10).join('- ' + m for m in filtered_memories)}
