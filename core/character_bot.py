@@ -110,14 +110,45 @@ class CharacterBot:
             if self.allowed_guild_ids and message.guild and message.guild.id not in self.allowed_guild_ids:
                 return
             
-            # 處理訊息（只使用自己的角色）
-            await self.character_registry.handle_message(
-                message, 
-                self.character_id, 
-                self.client, 
-                self.proactive_keywords,
-                self.gemini_config
+            # 檢查是否需要回應
+            should_respond = await self.character_registry.should_respond(
+                message, self.character_id, self.client, self.proactive_keywords
             )
+            
+            if not should_respond:
+                return
+            
+            # 在這裡管理打字狀態 - 持續的 typing 狀態
+            typing_task = None
+            
+            async def maintain_typing():
+                """維持持續的打字狀態"""
+                try:
+                    while True:
+                        await message.channel.trigger_typing()
+                        await asyncio.sleep(8)  # 每8秒重新發送typing
+                except asyncio.CancelledError:
+                    pass  # 正常取消
+            
+            typing_task = asyncio.create_task(maintain_typing())
+            
+            try:
+                # 處理訊息（只使用自己的角色）
+                await self.character_registry.handle_message(
+                    message, 
+                    self.character_id, 
+                    self.client, 
+                    self.proactive_keywords,
+                    self.gemini_config
+                )
+            finally:
+                # 停止持續的打字狀態
+                if typing_task and not typing_task.done():
+                    typing_task.cancel()
+                    try:
+                        await typing_task
+                    except asyncio.CancelledError:
+                        pass  # 預期的取消
     
     def _setup_commands(self):
         """設定斜線指令"""

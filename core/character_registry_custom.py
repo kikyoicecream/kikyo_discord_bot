@@ -12,12 +12,10 @@ from google.generativeai.types import HarmCategory, HarmBlockThreshold
 from core import memory
 
 class CharacterRegistry:
-    """簡化的角色註冊器 - 管理多個角色的設定和記憶"""
+    """簡化的角色註冊器 - 專注於角色設定管理"""
     
     def __init__(self):
         self.characters: Dict[str, dict] = {}
-        self.conversation_histories: Dict[str, Dict[int, list]] = {}
-        self.active_users: Dict[str, Dict[int, Dict[str, dict]]] = {}
         self.db = None
         self._initialize_firebase()
     
@@ -63,8 +61,6 @@ class CharacterRegistry:
                 character_data = doc.to_dict()
                 if character_data:  # 確保不是 None
                     self.characters[character_id] = character_data
-                    self.conversation_histories[character_id] = {}
-                    self.active_users[character_id] = {}
                     return True
                 else:
                     print(f"角色 {character_id} 的設定資料為空")
@@ -107,8 +103,8 @@ class CharacterRegistry:
         
         return character_data.get(setting_key, default_value)
     
-    async def handle_message(self, message, character_id, client, proactive_keywords=None, gemini_config=None):
-        """處理角色訊息"""
+    async def should_respond(self, message, character_id, client, proactive_keywords=None):
+        """檢查是否需要回應此訊息"""
         # 檢查是否需要回應
         mentioned = client.user.mentioned_in(message)
         contains_keyword = False
@@ -116,141 +112,142 @@ class CharacterRegistry:
         if proactive_keywords:
             contains_keyword = any(keyword.lower() in message.content.lower() for keyword in proactive_keywords)
         
-        if not mentioned and not contains_keyword:
-            return False
+        return mentioned or contains_keyword
+    
+    def _build_group_context(self, character_id: str, channel_id: int, user_name: str) -> str:
+        """建構群組對話上下文 - 簡化版本"""
+        try:
+            from core.group_conversation_tracker import get_conversation_summary, get_active_users_in_channel, get_recent_conversation_context
+            
+            # 獲取群組摘要
+            group_summary = get_conversation_summary(character_id, channel_id)
+            
+            # 獲取活躍使用者
+            active_users = get_active_users_in_channel(character_id, channel_id, 30)
+            other_users = [user for user in active_users if user['name'] != user_name]
+            
+            # 建構上下文
+            context_parts = []
+            if group_summary:
+                context_parts.append(f"群組對話情況：{group_summary}")
+            
+            if other_users:
+                other_user_names = [user['name'] for user in other_users[:3]]
+                context_parts.append(f"其他活躍使用者：{', '.join(other_user_names)}")
+            
+            # 獲取最近對話記錄
+            recent_context = get_recent_conversation_context(character_id, channel_id, 8)
+            if recent_context:
+                conversation_lines = []
+                for context in recent_context:
+                    if context['message'] and len(context['message']) > 5:
+                        conversation_lines.append(f"{context['user_name']}：{context['message']}")
+                
+                if conversation_lines:
+                    context_parts.append(f"最近對話記錄：\n" + "\n".join(conversation_lines))
+            
+            return "\n".join(context_parts) if context_parts else ""
+            
+        except Exception as e:
+            print(f"建構群組上下文時發生錯誤：{e}")
+            return ""
+    
+    async def handle_message(self, message, character_id, client, proactive_keywords=None, gemini_config=None):
+        """處理角色訊息（簡化版本）"""
         
         user_prompt = message.content
-        if mentioned:
+        
+        # 檢查是否被提及，如果是則移除提及標記
+        if client.user.mentioned_in(message):
             user_prompt = user_prompt.replace(f'<@{client.user.id}>', '').strip()
         
-        # 直接使用當前角色 ID（移除角色切換功能）
+        # 直接使用當前角色 ID
         persona_id = character_id
         
         if not user_prompt:
-            async with message.channel.typing():
-                try:
-                    await message.reply("「想說什麼？我在聽。」", mention_author=False)
-                except discord.errors.HTTPException:
-                    await message.channel.send(f"{message.author.mention} 「想說什麼？我在聽。」")
-                except Exception:
-                    await message.channel.send("「想說什麼？我在聽。」")
+            try:
+                await message.reply("「想說什麼？我在聽。」", mention_author=False)
+            except discord.errors.HTTPException:
+                await message.channel.send(f"{message.author.mention} 「想說什麼？我在聽。」")
+            except Exception:
+                await message.channel.send("「想說什麼？我在聽。」")
             return True
         
-        # 使用你建議的簡潔打字狀態管理方式
-        async with message.channel.typing():
-            try:
-                # 獲取完整的角色資料
-                character_data = self.characters.get(persona_id, {})
-                if not character_data:
-                    try:
-                        await message.reply("「抱歉，我的設定資料似乎有問題……」", mention_author=False)
-                    except discord.errors.HTTPException:
-                        await message.channel.send(f"{message.author.mention} 「抱歉，我的設定資料似乎有問題……」")
-                    except Exception:
-                        await message.channel.send("「抱歉，我的設定資料似乎有問題……」")
-                    return True
-                    
-                # 提取需要的資訊
-                user_name = message.author.display_name
-                user_id = str(message.author.id)
-                channel_id = message.channel.id
-                target_nick = character_data.get('name', persona_id)
-                bot_name = target_nick or persona_id
-                
-                # 追蹤使用者活動（新增）
+        try:
+            # 獲取角色資料
+            character_data = self.characters.get(persona_id, {})
+            if not character_data:
                 try:
-                    from core.group_conversation_tracker import track_user_activity
-                    track_user_activity(character_id, channel_id, message.author.id, user_name, user_prompt)
-                except Exception as e:
-                    print(f"追蹤使用者活動時發生錯誤: {e}")
-                
-                # 格式化角色描述供 AI 使用
-                character_persona = self._format_character_data(character_data)
-                
-                # 使用 memory.py 中的功能獲取使用者記憶
-                user_memories = memory.get_character_user_memory(persona_id, user_id)
-                
-                # 建構群組對話上下文
-                group_context = ""
-                if channel_id and character_id:
-                    try:
-                        from core.group_conversation_tracker import get_conversation_summary, get_active_users_in_channel, get_recent_conversation_context
-                        group_summary = get_conversation_summary(character_id, channel_id)
-                        active_users = get_active_users_in_channel(character_id, channel_id, 30)
-                        recent_context = get_recent_conversation_context(character_id, channel_id, 10)  # 獲取最近10則對話
-                        
-                        if active_users:
-                            # 過濾掉當前使用者
-                            other_users = [user for user in active_users if user['name'] != user_name]
-                            if other_users:
-                                other_user_names = [user['name'] for user in other_users[:3]]  # 最多3個其他使用者
-                                group_context = f"群組對話情況：{group_summary}\n其他活躍使用者：{', '.join(other_user_names)}"
-                            else:
-                                group_context = f"群組對話情況：{group_summary}"
-                        
-                        # 添加最近的對話上下文（包含BOT回應）
-                        if recent_context:
-                            conversation_lines = []
-                            for context in recent_context[-8:]:  # 最近8則對話
-                                if context['message'] and len(context['message']) > 5:
-                                    if context.get('is_bot', False):
-                                        conversation_lines.append(f"{context['user_name']}：{context['message']}")
-                                    else:
-                                        conversation_lines.append(f"{context['user_name']}：{context['message']}")
-                            
-                            if conversation_lines:
-                                group_context += f"\n\n最近對話記錄：\n" + "\n".join(conversation_lines)
-                                
-                    except Exception as e:
-                        print(f"獲取群組上下文時發生錯誤：{e}")
-                        group_context = ""
-                
-                # 使用 memory.py 中的功能生成回應（群組上下文由外部提供）
-                response = await memory.generate_character_response(
-                    bot_name, 
-                    character_persona, 
-                    user_memories, 
-                    user_prompt, 
-                    user_name,
-                    group_context,
-                    gemini_config
-                )
-                
-                # 使用 memory.py 中的功能保存記憶
-                memory_content = f"{user_name} 說：{user_prompt}"
-                save_success = await memory.save_character_user_memory(persona_id, user_id, memory_content, user_name)
-                if not save_success:
-                    print(f"⚠️ 記憶保存失敗：{persona_id} - {user_id}")
-                
-                # 發送回應（加上錯誤處理）
-                try:
-                    await message.reply(response, mention_author=False)
-                except discord.errors.HTTPException as e:
-                    # 如果回覆失敗（如原訊息被刪除），改為普通發送
-                    print(f"回覆失敗，改為普通發送：{e}")
-                    await message.channel.send(f"{message.author.mention} {response}")
-                except Exception as e:
-                    # 其他錯誤，嘗試普通發送
-                    print(f"回覆時發生未知錯誤：{e}")
-                    await message.channel.send(f"{message.author.mention} {response}")
-                
-                # 追蹤BOT自己的回應（新增）
-                try:
-                    from core.group_conversation_tracker import track_bot_response
-                    track_bot_response(character_id, channel_id, bot_name, response)
-                except Exception as e:
-                    print(f"追蹤BOT回應時發生錯誤：{e}")
-                
-            except Exception as e:
-                print(f"處理訊息時發生錯誤：{e}")
-                # 錯誤訊息也使用相同的安全發送方式
-                try:
-                    await message.reply("「抱歉，我現在有點累……」", mention_author=False)
+                    await message.reply("「抱歉，我的設定資料似乎有問題……」", mention_author=False)
                 except discord.errors.HTTPException:
-                    # 如果回覆失敗，改為普通發送
-                    await message.channel.send(f"{message.author.mention} 「抱歉，我現在有點累……」")
+                    await message.channel.send(f"{message.author.mention} 「抱歉，我的設定資料似乎有問題……」")
                 except Exception:
-                    # 最後的保險，直接發送到頻道
-                    await message.channel.send("「抱歉，我現在有點累……」")
+                    await message.channel.send("「抱歉，我的設定資料似乎有問題……」")
+                return True
+                
+            # 提取基本資訊
+            user_name = message.author.display_name
+            user_id = str(message.author.id)
+            channel_id = message.channel.id
+            bot_name = character_data.get('name', persona_id)
+            
+            # 追蹤使用者活動
+            try:
+                from core.group_conversation_tracker import track_user_activity
+                track_user_activity(character_id, channel_id, message.author.id, user_name, user_prompt)
+            except Exception as e:
+                print(f"追蹤使用者活動時發生錯誤: {e}")
+            
+            # 格式化角色描述
+            character_persona = self._format_character_data(character_data)
+            
+            # 獲取使用者記憶
+            user_memories = memory.get_character_user_memory(persona_id, user_id)
+            
+            # 建構群組上下文（簡化）
+            group_context = self._build_group_context(character_id, channel_id, user_name)
+            
+            # 生成回應
+            response = await memory.generate_character_response(
+                bot_name, 
+                character_persona, 
+                user_memories, 
+                user_prompt, 
+                user_name,
+                group_context,
+                gemini_config
+            )
+            
+            # 保存記憶
+            memory_content = f"{user_name} 說：{user_prompt}"
+            save_success = await memory.save_character_user_memory(persona_id, user_id, memory_content, user_name)
+            if not save_success:
+                print(f"⚠️ 記憶保存失敗：{persona_id} - {user_id}")
+            
+            # 發送回應
+            try:
+                await message.reply(response, mention_author=False)
+            except discord.errors.HTTPException as e:
+                print(f"回覆失敗，改為普通發送：{e}")
+                await message.channel.send(f"{message.author.mention} {response}")
+            except Exception as e:
+                print(f"回覆時發生未知錯誤：{e}")
+                await message.channel.send(f"{message.author.mention} {response}")
+            
+            # 追蹤BOT回應
+            try:
+                from core.group_conversation_tracker import track_bot_response
+                track_bot_response(character_id, channel_id, bot_name, response)
+            except Exception as e:
+                print(f"追蹤BOT回應時發生錯誤：{e}")
+            
+        except Exception as e:
+            print(f"處理訊息時發生錯誤：{e}")
+            try:
+                await message.reply("「抱歉，我現在有點累……」", mention_author=False)
+            except discord.errors.HTTPException:
+                await message.channel.send(f"{message.author.mention} 「抱歉，我現在有點累……」")
+            except Exception:
+                await message.channel.send("「抱歉，我現在有點累……」")
         
         return True 
