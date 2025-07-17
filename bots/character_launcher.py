@@ -69,7 +69,6 @@ def main():
     print(f"🌡️ Temperature: {gemini_config.get('temperature', 'N/A')}")
     print(f"🎯 Top-K: {gemini_config.get('top_k', 'N/A')}")
     print(f"📊 Top-P: {gemini_config.get('top_p', 'N/A')}")
-    print(f"🤖 Model: {gemini_config.get('model', 'N/A')}")
     print("=" * 50)
     
     # 啟動 Bot
