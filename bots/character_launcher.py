@@ -17,7 +17,8 @@ from core.character_bot import run_character_bot_with_restart
 def load_character_config(character_id: str) -> Optional[Dict[str, Any]]:
     """載入角色配置"""
     try:
-        config_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'characters.json')
+        # 修正路徑：配置檔案現在在 bots 目錄下
+        config_path = os.path.join(os.path.dirname(__file__), 'characters.json')
         with open(config_path, 'r', encoding='utf-8') as f:
             configs = json.load(f)
             return configs.get(character_id)
@@ -35,7 +36,7 @@ def main():
         
         # 顯示所有可用角色
         try:
-            config_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'characters.json')
+            config_path = os.path.join(os.path.dirname(__file__), 'characters.json')
             with open(config_path, 'r', encoding='utf-8') as f:
                 configs = json.load(f)
                 for char_id, config in configs.items():
