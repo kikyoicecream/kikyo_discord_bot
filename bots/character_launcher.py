@@ -62,8 +62,6 @@ def main():
     
     # 顯示角色資訊
     print(f"🎭 {config.get('name', character_id)} Discord Bot")
-    print("=" * 50)
-    print(f"📝 描述: {config.get('description', '無描述')}")
     
     gemini_config = config.get('gemini_config', {})
     print(f"🌡️ Temperature: {gemini_config.get('temperature', 'N/A')}")
