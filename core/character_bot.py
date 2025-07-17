@@ -45,7 +45,8 @@ class CharacterBot:
         
         # 設定事件處理器
         self._setup_events()
-        # self._setup_commands() # 移到 on_ready 中
+        # 設定指令（在連接前）
+        self._setup_commands()
     
     def _get_character_permission(self, permission_type: str) -> List[int]:
         """取得角色專屬權限設定，如果沒有則使用全域設定"""
@@ -75,20 +76,8 @@ class CharacterBot:
             else:
                 print(f"❌ 註冊角色失敗：{self.character_id}")
             
-            # 先設定指令，再同步
-            self._setup_commands()  # 移到這裡
-            
-            # 同步指令
-            try:
-                if self.allowed_guild_ids and len(self.allowed_guild_ids) > 0:
-                    for guild_id in self.allowed_guild_ids:
-                        await self.tree.sync(guild=discord.Object(id=guild_id))
-                    print(f"已為 {len(self.allowed_guild_ids)} 個指定的伺服器同步指令。")
-                else:
-                    synced = await self.tree.sync()
-                    print(f"已全域同步 {len(synced)} 個指令。")
-            except Exception as e:
-                print(f"同步指令失敗：{e}")
+            # 移除自動同步，改為手動同步
+            print(f"📝 如需同步指令，請使用 /sync 指令")
         
         @self.client.event
         async def on_disconnect():
@@ -103,6 +92,20 @@ class CharacterBot:
             """處理訊息"""
             # 忽略 Bot 自己的訊息
             if message.author == self.client.user:
+                return
+            
+            # 處理同步指令（擁有者專用）
+            if message.content == f"/sync" and self.bot_owner_ids and message.author.id in self.bot_owner_ids:
+                try:
+                    if self.allowed_guild_ids and len(self.allowed_guild_ids) > 0:
+                        for guild_id in self.allowed_guild_ids:
+                            await self.tree.sync(guild=discord.Object(id=guild_id))
+                        await message.channel.send(f"✅ 已為 {len(self.allowed_guild_ids)} 個指定的伺服器同步指令。")
+                    else:
+                        synced = await self.tree.sync()
+                        await message.channel.send(f"✅ 已全域同步 {len(synced)} 個指令。")
+                except Exception as e:
+                    await message.channel.send(f"❌ 同步指令失敗：{e}")
                 return
             
             # 檢查頻道權限
