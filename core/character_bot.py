@@ -45,7 +45,7 @@ class CharacterBot:
         
         # 設定事件處理器
         self._setup_events()
-        self._setup_commands()
+        # self._setup_commands() # 移到 on_ready 中
     
     def _get_character_permission(self, permission_type: str) -> List[int]:
         """取得角色專屬權限設定，如果沒有則使用全域設定"""
@@ -74,6 +74,9 @@ class CharacterBot:
                 print(f"✅ 成功註冊角色：{self.character_id}")
             else:
                 print(f"❌ 註冊角色失敗：{self.character_id}")
+            
+            # 先設定指令，再同步
+            self._setup_commands()  # 移到這裡
             
             # 同步指令
             try:
