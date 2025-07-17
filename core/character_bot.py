@@ -94,20 +94,6 @@ class CharacterBot:
             if message.author == self.client.user:
                 return
             
-            # 處理同步指令（擁有者專用）
-            if message.content == f"/sync" and self.bot_owner_ids and message.author.id in self.bot_owner_ids:
-                try:
-                    if self.allowed_guild_ids and len(self.allowed_guild_ids) > 0:
-                        for guild_id in self.allowed_guild_ids:
-                            await self.tree.sync(guild=discord.Object(id=guild_id))
-                        await message.channel.send(f"✅ 已為 {len(self.allowed_guild_ids)} 個指定的伺服器同步指令。")
-                    else:
-                        synced = await self.tree.sync()
-                        await message.channel.send(f"✅ 已全域同步 {len(synced)} 個指令。")
-                except Exception as e:
-                    await message.channel.send(f"❌ 同步指令失敗：{e}")
-                return
-            
             # 檢查頻道權限
             if self.allowed_channel_ids and message.channel.id not in self.allowed_channel_ids:
                 return
@@ -182,7 +168,7 @@ class CharacterBot:
             character_persona = self.character_registry.get_character_setting(self.character_id, 'persona', '未設定')
             
             embed = discord.Embed(
-                title=f"🤖 {character_name}",
+                title=f"�� {character_name}",
                 description=character_persona[:1000] if character_persona else "角色設定未載入",
                 color=discord.Color.blue()
             )
