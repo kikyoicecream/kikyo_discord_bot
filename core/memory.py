@@ -87,7 +87,7 @@ class MemoryManager:
             print(f"保存記憶時發生錯誤: {e}")
             return False
 
-    def get_character_user_memory(self, character_id: str, user_id: str, limit: int = 15) -> List[str]:
+    def get_character_user_memory(self, character_id: str, user_id: str, limit: int = 25) -> List[str]:
         """獲取角色與使用者的對話記憶（包含永久記憶和動態記憶）"""
         if not self.db:
             return []
@@ -237,7 +237,7 @@ async def save_character_user_memory(character_id: str, user_id: str, content: s
     """保存角色與使用者的對話記憶"""
     return await _memory_manager.save_character_user_memory(character_id, user_id, content, user_name)
 
-def get_character_user_memory(character_id: str, user_id: str, limit: int = 15) -> List[str]:
+def get_character_user_memory(character_id: str, user_id: str, limit: int = 25) -> List[str]:
     """獲取角色與使用者的對話記憶"""
     return _memory_manager.get_character_user_memory(character_id, user_id, limit)
 
@@ -268,7 +268,7 @@ async def generate_character_response(character_name: str, character_persona: st
         # 建構記憶內容
         memory_context = ""
         if user_memories:
-            memory_context = "\n".join(user_memories[-15:])  # 最近15則記憶
+            memory_context = "\n".join(user_memories)  # 使用所有傳入的記憶
         else:
             memory_context = "暫無記憶"
         
