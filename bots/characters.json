@@ -17,8 +17,8 @@
     "token_env": "GU_BEICHEN_TOKEN",
     "proactive_keywords": ["顧北辰", "顧總", "辰辰"],
     "gemini_config": {
-      "temperature": 0.7,
-      "top_k": 30,
+      "temperature": 1.0,
+      "top_k": 40,
       "top_p": 0.9
     },
     "enabled": true
