@@ -31,7 +31,7 @@ class MultiBotLauncher:
                 'file': 'bots/gu_beichen.py',
                 'token_env': 'GU_BEICHEN_TOKEN',
                 'process': None,
-                'enabled': False  # 預設關閉，需要時再啟用
+                'enabled': True
             }
         ]
         
