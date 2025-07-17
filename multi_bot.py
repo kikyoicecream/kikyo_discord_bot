@@ -21,14 +21,16 @@ class MultiBotLauncher:
         self.bots = [
             {
                 'name': '沈澤',
-                'file': 'bots/shen_ze.py',
+                'file': 'bots/character_launcher.py',
+                'args': ['shen_ze'],
                 'token_env': 'SHEN_ZE_TOKEN',
                 'process': None,
                 'enabled': True
             },
             {
                 'name': '顧北辰',
-                'file': 'bots/gu_beichen.py',
+                'file': 'bots/character_launcher.py',
+                'args': ['gu_beichen'],
                 'token_env': 'GU_BEICHEN_TOKEN',
                 'process': None,
                 'enabled': True
@@ -63,7 +65,9 @@ class MultiBotLauncher:
             while self.running:
                 try:
                     print(f"🚀 啟動 {bot_info['name']} Bot……")
-                    process = subprocess.Popen([sys.executable, bot_info['file']])
+                    # 使用新的啟動方式，包含角色 ID 參數
+                    cmd = [sys.executable, bot_info['file']] + bot_info.get('args', [])
+                    process = subprocess.Popen(cmd)
                     bot_info['process'] = process
                     process.wait()
                     
