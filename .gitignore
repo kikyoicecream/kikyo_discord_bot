@@ -36,6 +36,3 @@ logs/
 *.tmp
 *.temp
 .cache/
-
-# 舊版檔案（不再使用）
-bot.py

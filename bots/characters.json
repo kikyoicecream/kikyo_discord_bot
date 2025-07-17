@@ -15,12 +15,12 @@
     "name": "顧北辰",
     "display_name": "顧北辰",
     "token_env": "GU_BEICHEN_TOKEN",
-    "proactive_keywords": ["顧北辰", "gu_beichen", "顧", "北辰", "beichen"],
+    "proactive_keywords": ["顧北辰", "顧總", "辰辰"],
     "gemini_config": {
       "temperature": 0.7,
       "top_k": 30,
       "top_p": 0.9
     },
-    "enabled": false
+    "enabled": true
   }
 } 
