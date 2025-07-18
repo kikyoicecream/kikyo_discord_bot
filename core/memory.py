@@ -25,7 +25,7 @@ SAFETY_SETTINGS = [
 # 全域配置 Gemini API
 api_key = os.getenv("GOOGLE_API_KEY")
 if api_key:
-    genai.configure(api_key=api_key, safety_settings=SAFETY_SETTINGS)  # type: ignore
+    genai.configure(api_key=api_key)  # type: ignore
     print("✅ Gemini 全域配置完成")
 else:
     print("⚠️ 未找到 GOOGLE_API_KEY")
@@ -150,7 +150,7 @@ class MemoryManager:
             import google.generativeai as genai
             
             # 使用全域配置的 Gemini
-            model = genai.GenerativeModel('gemini-2.0-flash')  # type: ignore
+            model = genai.GenerativeModel('gemini-2.0-flash', safety_settings=SAFETY_SETTINGS)  # type: ignore
             
             # 改進的摘要提示 - 限制字串長度
             prompt = f"""
@@ -216,7 +216,7 @@ Organize the summary using the following format:
 Output the organized memory directly, without any introductory text.
 """
             
-            model = genai.GenerativeModel("gemini-2.0-flash")  # type: ignore
+            model = genai.GenerativeModel("gemini-2.0-flash", safety_settings=SAFETY_SETTINGS)  # type: ignore
             response = await asyncio.to_thread(model.generate_content, prompt)
             consolidated = response.text.strip() if response.text else ""
             
@@ -260,7 +260,7 @@ async def generate_character_response(character_name: str, character_persona: st
             if 'top_p' in gemini_config:
                 generation_config['top_p'] = gemini_config['top_p']
         
-        model = genai.GenerativeModel('gemini-2.5-pro', generation_config=generation_config)  # type: ignore
+        model = genai.GenerativeModel('gemini-2.5-pro', generation_config=generation_config, safety_settings=SAFETY_SETTINGS)  # type: ignore
         
         # 建構記憶內容
         memory_context = ""
