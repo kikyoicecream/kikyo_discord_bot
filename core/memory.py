@@ -11,6 +11,24 @@ from datetime import datetime
 from typing import Dict, List, Optional
 from google.cloud import firestore
 from google.oauth2 import service_account
+import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
+
+# 全域安全過濾器設定
+SAFETY_SETTINGS = [
+    {"category": HarmCategory.HARM_CATEGORY_HARASSMENT, "threshold": HarmBlockThreshold.BLOCK_NONE},
+    {"category": HarmCategory.HARM_CATEGORY_HATE_SPEECH, "threshold": HarmBlockThreshold.BLOCK_NONE},
+    {"category": HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, "threshold": HarmBlockThreshold.BLOCK_NONE},
+    {"category": HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, "threshold": HarmBlockThreshold.BLOCK_NONE},
+]
+
+# 全域配置 Gemini API
+api_key = os.getenv("GOOGLE_API_KEY")
+if api_key:
+    genai.configure(api_key=api_key, safety_settings=SAFETY_SETTINGS)  # type: ignore
+    print("✅ Gemini 全域配置完成")
+else:
+    print("⚠️ 未找到 GOOGLE_API_KEY")
 
 class MemoryManager:
     """記憶管理器"""
@@ -131,13 +149,7 @@ class MemoryManager:
         try:
             import google.generativeai as genai
             
-            # 設定 Google AI
-            api_key = os.getenv("GOOGLE_API_KEY")
-            if not api_key:
-                print("⚠️ 未找到 GOOGLE_API_KEY，使用原始內容")
-                return content
-                
-            genai.configure(api_key=api_key)  # type: ignore
+            # 使用全域配置的 Gemini
             model = genai.GenerativeModel('gemini-2.0-flash')  # type: ignore
             
             # 改進的摘要提示 - 限制字串長度
@@ -176,12 +188,6 @@ Has a good relationship with other users
         try:
             import google.generativeai as genai
             
-            # 設定 Google AI
-            api_key = os.getenv("GOOGLE_API_KEY")
-            if not api_key:
-                print("⚠️ 未找到 GOOGLE_API_KEY，使用簡單合併")
-                return "\n".join(memories)
-            
             # 過濾掉 None 或無意義的記憶
             filtered_memories = []
             for memory in memories:
@@ -191,8 +197,6 @@ Has a good relationship with other users
             if not filtered_memories:
                 print("⚠️ 所有記憶都是 None，使用備用統整")
                 return f"與 {user_name} 有過多次對話互動"
-            
-            genai.configure(api_key=api_key)  # type: ignore
             
             # 使用使用者提供的 compress_memories 方法
             prompt = f"""
@@ -245,13 +249,6 @@ async def generate_character_response(character_name: str, character_persona: st
     """生成角色回應（專注於個人記憶，群組上下文由外部提供）"""
     try:
         import google.generativeai as genai
-        
-        # 設定 Google AI
-        api_key = os.getenv("GOOGLE_API_KEY")
-        if not api_key:
-            return "「抱歉，我現在無法思考……」"
-            
-        genai.configure(api_key=api_key)  # type: ignore
         
         # 設定 Gemini 參數
         generation_config = {}

@@ -7,8 +7,6 @@ from zoneinfo import ZoneInfo
 import discord
 import firebase_admin
 from firebase_admin import firestore
-import google.generativeai.types as genai_types
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
 from core import memory
 
 class CharacterRegistry:
