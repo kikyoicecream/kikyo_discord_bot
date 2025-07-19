@@ -1,68 +1,81 @@
 # Kikyo Discord BOT 系統
 
-多角色 Discord Bot 系統，支援獨立的虛擬人物角色，每個角色都有專屬的 Discord Token 和記憶系統。具備智能群組對話追蹤功能，讓 BOT 能夠感知多使用者對話環境並自然地與所有參與者互動。
+多角色 Discord Bot 系統，支援獨立的虛擬人物角色，每個角色都有專屬的 Discord Token 和記憶系統。具備 AI 群組對話追蹤功能，讓 BOT 能夠感知多使用者對話環境並自然地與所有參與者互動。
+
+## ✨ 最新更新
+
+- 🔒 **全域安全過濾器**：統一的 Gemini AI 安全過濾器設定
+- 🧠 **改進的記憶系統**：分離永久記憶和動態記憶，更符合使用者偏好的記憶管理
+- 👥 **增強的群組對話追蹤**：更自然的多人對話互動
+- 🎯 **角色啟動器**：簡化的角色 Bot 管理系統
 
 ## 快速開始
 
-1. 複製 `env_example.txt` 為 `.env` 並填入您的設定
+1. 複製 `.env.example` 為 `.env` 並填入您的設定
 2. 安裝相依套件：`pip install -r requirements.txt`
-3. 使用多 Bot 啟動器：`python3 multi_bot_launcher.py`
+3. 使用角色啟動器：`python3 bots/character_launcher.py`
 
 ## 系統特色
 
 - 🎭 **多角色支援**：每個角色都是獨立的 Discord Bot
-- 🧠 **智能記憶**：使用 Firestore 儲存每個使用者的對話記憶
+- 🧠 **資料庫記憶**：使用 Firestore 儲存每個使用者的對話記憶
 - 👥 **群組對話追蹤**：追蹤活躍使用者，支援多使用者群組對話
 - 🔧 **靈活權限**：支援全域或個別 Bot 權限設定
 - 🚀 **自動重啟**：Bot 異常時自動重啟功能
 - 📱 **管理介面**：互動式多 Bot 管理系統
-
-## 角色介紹
-
-### 沈澤 (`shen_ze`)
-- 溫和的大叔角色，退休教師
-- 關鍵字：`沈澤`, `shen_ze`, `沈`, `澤`, `叔叔`
-- 性格：親切照顧人，經常稱呼對方為「孩子」或「年輕人」
-
-### 顧北辰 (`gu_beichen`)
-- 冷酷的角色
-- 關鍵字：`顧北辰`, `gu_beichen`, `顧`, `北辰`, `beichen`
+- 🔒 **安全過濾**：全域 Gemini AI 安全過濾器保護
 
 ## 檔案結構
 
 ```
 Kikyo Discord BOT/
 ├── README.md                    # 主要說明文件
-├── multi_bot_launcher.py        # 多 Bot 啟動器
-├── bot.py                       # 單一 Bot 啟動器（舊版）
+├── multi_bot.py                 # 多 Bot 啟動器（舊版）
 ├── requirements.txt             # Python 套件需求
 ├── mypy.ini                     # 型別檢查設定
-├── env_example.txt              # 環境變數範例
-├── bots/                        # 各角色 Bot 檔案
-│   ├── shen_ze.py              # 沈澤 Bot
-│   └── gu_beichen.py           # 顧北辰 Bot
+├── bots/                        # 角色 Bot 管理
+│   ├── character_launcher.py    # 角色啟動器
+│   └── characters.json          # 角色設定檔
 └── core/                        # 核心系統
-    ├── character_bot.py        # 通用 Bot 模板
+    ├── character_bot.py         # 通用 Bot 模板
     ├── character_registry_custom.py # 角色註冊系統
-    ├── memory.py               # 記憶管理系統
+    ├── memory.py                # 記憶管理系統（含全域安全設定）
     └── group_conversation_tracker.py # 群組對話追蹤系統
 ```
 
 ## 使用方式
 
-### 啟動單一 Bot
+### 推薦：使用角色啟動器
 ```bash
-# 啟動沈澤 Bot
-python3 bots/shen_ze.py
-
-# 啟動顧北辰 Bot
-python3 bots/gu_beichen.py
+# 啟動角色管理介面
+python3 bots/character_launcher.py
 ```
 
-### 啟動多個 Bot
-```bash
-# 使用管理介面
-python3 multi_bot_launcher.py
+角色啟動器提供：
+- 📋 **角色列表**：顯示所有可用角色
+- ▶️ **一鍵啟動**：選擇角色後自動啟動
+- 🔄 **自動重啟**：Bot 異常時自動重新啟動
+- 📊 **狀態監控**：即時顯示 Bot 運行狀態
+
+### 角色設定檔
+
+編輯 `bots/characters.json` 來管理角色：
+
+```json
+{
+  "shen_ze": {
+    "name": "沈澤",
+    "description": "溫和的大叔角色，退休教師",
+    "token_env": "SHEN_ZE_TOKEN",
+    "keywords": ["沈澤", "shen_ze", "沈", "澤", "叔叔"]
+  },
+  "gu_beichen": {
+    "name": "顧北辰", 
+    "description": "冷酷的角色",
+    "token_env": "GU_BEICHEN_TOKEN",
+    "keywords": ["顧北辰", "gu_beichen", "顧", "北辰", "beichen"]
+  }
+}
 ```
 
 ## 環境設定
@@ -77,13 +90,36 @@ GU_BEICHEN_TOKEN=your_gu_beichen_bot_token_here
 
 # Firebase 和 AI 設定
 FIREBASE_CREDENTIALS_JSON={"type":"service_account","project_id":"your-project-id",...}
-GEMINI_API_KEY=your_gemini_api_key_here
+GOOGLE_API_KEY=your_gemini_api_key_here
 
 # 權限設定
 ALLOWED_GUILDS=123456789,987654321
 ALLOWED_CHANNELS=111111111,222222222
 BOT_OWNER_IDS=333333333,444444444
 ```
+
+### 🔒 全域安全過濾器設定
+
+系統已內建全域 Gemini AI 安全過濾器，預設設定為：
+
+```python
+# 在 core/memory.py 中的全域設定
+SAFETY_SETTINGS = [
+    {"category": HarmCategory.HARM_CATEGORY_HARASSMENT, "threshold": HarmBlockThreshold.BLOCK_NONE},
+    {"category": HarmCategory.HARM_CATEGORY_HATE_SPEECH, "threshold": HarmBlockThreshold.BLOCK_NONE},
+    {"category": HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, "threshold": HarmBlockThreshold.BLOCK_NONE},
+    {"category": HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, "threshold": HarmBlockThreshold.BLOCK_NONE},
+]
+```
+
+**安全等級說明：**
+- `BLOCK_NONE`：完全關閉過濾（當前設定）
+- `BLOCK_ONLY_HIGH`：只阻擋高風險內容
+- `BLOCK_MEDIUM_AND_ABOVE`：阻擋中等以上風險（建議設定）
+- `BLOCK_LOW_AND_ABOVE`：阻擋低風險以上（嚴格）
+
+**修改安全設定：**
+編輯 `core/memory.py` 中的 `SAFETY_SETTINGS` 變數即可。
 
 ### 權限設定指南
 
@@ -106,75 +142,41 @@ GU_BEICHEN_ALLOWED_GUILDS=遊戲群組ID
 GU_BEICHEN_ALLOWED_CHANNELS=遊戲頻道ID
 ```
 
-**權限優先順序**：
-1. 個別 Bot 設定 (例如 `SHEN_ZE_ALLOWED_GUILDS`)
-2. 全域設定 (例如 `ALLOWED_GUILDS`)
-3. 如果都沒有設定，Bot 將無法運作
+## 🧠 記憶系統
 
-#### 如何獲取 Discord ID
+### 記憶分類
+系統將記憶分為兩類：
 
-1. **開啟開發者模式**：Discord 設定 → 進階 → 開發者模式
-2. **獲取伺服器 ID**：右鍵點擊伺服器名稱 → 複製伺服器 ID
-3. **獲取頻道 ID**：右鍵點擊頻道名稱 → 複製頻道 ID
-4. **獲取使用者 ID**：右鍵點擊使用者名稱 → 複製使用者 ID
+1. **永久記憶**：手動添加的重要資訊，永不刪除
+2. **動態記憶**：自動生成的對話記憶，會被統整
 
-## Firestore 設定
+### 記憶管理機制
+- **自動記憶**：每次對話後自動使用 AI 提取重要資訊
+- **智慧統整**：動態記憶超過 15 則時，自動統整成摘要
+- **角色隔離**：每個角色的記憶完全獨立
+- **使用者隔離**：每個使用者的記憶分別儲存
 
-### 資料庫結構
+### Firestore 資料結構
 ```
 your-project/
-├── shen_ze/                    # 沈澤角色
+├── character_id/
 │   ├── profile/                # 角色設定
-│   ├── users/                  # 使用者資料
-│   │   └── memory/             # 記憶集合
-│   │       └── discord_user_id/ # 使用者記憶
-│   │           ├── memories: ["記憶1", "記憶2", ...]
-│   │           └── last_updated: timestamp
-│   └── group_context/          # 群組對話上下文
-│       └── channels/           # 頻道集合
-│           └── channel_id/     # 頻道對話記錄
-│               ├── active_users: [使用者資料]
-│               ├── recent_context: [對話記錄]
-│               └── summary: "對話摘要"
-└── gu_beichen/                 # 顧北辰角色
-    ├── profile/                # 角色設定
-    ├── users/                  # 使用者資料
-    └── group_context/          # 群組對話上下文
+│   └── users/
+│       └── memory/
+│           └── user_id/
+│               ├── permanent_memories: []  # 永久記憶
+│               ├── dynamic_memories: []    # 動態記憶
+│               └── last_updated: timestamp
 ```
 
-### 角色設定範例
-在 Firestore 中建立角色設定文件：
-
-**文件路徑**: `shen_ze/profile`
-```json
-{
-  "name": "沈澤",
-  "personality": "溫和的大叔，喜歡照顧人，說話風格親切",
-  "background": "沈澤是一個經驗豐富的大叔，喜歡幫助年輕人解決問題",
-  "speaking_style": "使用親切的語氣，經常稱呼對方為「孩子」或「年輕人」",
-  "interests": ["照顧他人", "分享經驗", "聆聽故事"],
-  "relationships": "對所有使用者都像長輩一樣關懷",
-  "age": "45歲",
-  "occupation": "退休教師"
-}
-```
-
-## 群組對話追蹤功能
+## 👥 群組對話追蹤功能
 
 ### 功能概述
-系統具備完整的群組對話追蹤功能，讓 BOT 能夠：
-
-1. **追蹤活躍使用者**：記錄哪些使用者正在與 BOT 對話
-2. **群組對話上下文**：了解整個對話的脈絡
-3. **主動提及其他使用者**：BOT 可以自然地提及其他活躍使用者
-4. **智能對話摘要**：生成群組對話的摘要
-
-### 技術架構
-- **核心模組**：`core/group_conversation_tracker.py`
-- **資料結構**：支援多角色、多頻道的獨立追蹤
-- **BOT回應追蹤**：記錄BOT自己的發言，確保對話連續性
-- **持久化儲存**：重要資料保存到 Firestore
-- **智能清理**：自動清理過期活動記錄
+- **活躍使用者追蹤**：記錄哪些使用者正在與 BOT 對話
+- **群組對話上下文**：了解整個對話的脈絡
+- **主動提及其他使用者**：BOT 可以自然地提及其他活躍使用者
+- **AI 對話摘要**：生成群組對話的摘要
+- **BOT 回應追蹤**：記錄 BOT 自己的發言，確保對話連續性
 
 ### 使用範例
 
@@ -183,66 +185,24 @@ your-project/
 小明：大家好！今天天氣真好
 小華：嗨！我在這裡
 小美：大家好！我是新來的
-小明：歡迎小美！
 
 沈澤：「看到大家都很活躍呢！小明，你提到天氣很好，確實是個適合聊天的日子。小華，你也在這裡，我們可以一起歡迎小美。小美，歡迎加入我們的對話！」
 ```
 
-#### 智能提及其他使用者
-```
-小明：有人想討論電影嗎？
-小華：我喜歡科幻片
-小美：我比較喜歡愛情片
-
-沈澤：「電影話題很有趣呢！小明，你開啟了這個話題。小華喜歡科幻片，小美偏好愛情片，大家的品味都很不一樣。要不要分享一下最近看過的好電影？」
-```
-
-#### 對話連續性（BOT回應追蹤）
-```
-小明：沈澤叔叔，你覺得今天適合做什麼？
-沈澤：「小華，今天天氣這麼好，很適合出去走走或者在家裡做些輕鬆的事情呢。」
-
-小明：沈澤叔叔，你剛才說適合出去走走，有什麼建議嗎？
-沈澤：「小明，你還記得我剛才說的話呢！我建議可以去公園散步，或者找個咖啡廳坐坐。」
-
-小美：沈澤，你提到的咖啡廳聽起來不錯
-沈澤：「小美，你也對咖啡廳感興趣嗎？我可以推薦幾個不錯的地方。」
-```
-
-### 管理功能
-- **查看活躍使用者**：使用 `/active_users` 指令
-- **對話摘要**：自動生成群組對話摘要
-- **使用者統計**：顯示使用者訊息數和最後活動時間
-
 ## 如何新增新角色
 
-### 1. 建立角色 Bot 檔案
+### 1. 更新角色設定檔
+編輯 `bots/characters.json`：
 
-```python
-#!/usr/bin/env python3
-"""
-新角色 Discord Bot
-"""
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from core.character_bot import run_character_bot_with_restart
-
-# --- 角色專屬設定 ---
-CHARACTER_ID = "new_character"
-TOKEN_ENV_VAR = "NEW_CHARACTER_TOKEN"
-PROACTIVE_KEYWORDS = ["新角色", "關鍵字1", "關鍵字2"]
-
-def main():
-    """啟動新角色 Bot"""
-    print("🎭 新角色 Discord Bot")
-    print("=" * 50)
-    
-    run_character_bot_with_restart(CHARACTER_ID, TOKEN_ENV_VAR, PROACTIVE_KEYWORDS)
-
-if __name__ == "__main__":
-    main()
+```json
+{
+  "new_character": {
+    "name": "新角色",
+    "description": "角色描述",
+    "token_env": "NEW_CHARACTER_TOKEN",
+    "keywords": ["新角色", "關鍵字1", "關鍵字2"]
+  }
+}
 ```
 
 ### 2. 設定環境變數
@@ -252,30 +212,25 @@ NEW_CHARACTER_TOKEN=your_new_character_bot_token_here
 ```
 
 ### 3. 建立 Firestore 角色設定
-在 Firestore 中建立 `new_character/profile` 文件。
+在 Firestore 中建立 `new_character/profile` 文件：
 
-### 4. 更新多 Bot 啟動器
-修改 `multi_bot_launcher.py` 中的 `AVAILABLE_BOTS` 列表。
+```json
+{
+  "name": "新角色",
+  "personality": "角色性格描述",
+  "background": "角色背景故事",
+  "speaking_style": "說話風格",
+  "interests": ["興趣1", "興趣2"],
+  "age": "年齡",
+  "occupation": "職業"
+}
+```
 
-## 系統功能
+### 4. 使用角色啟動器
+運行 `python3 bots/character_launcher.py`，新角色會自動出現在列表中。
 
-### 記憶管理
-- **自動記憶**：系統會自動記錄使用者的對話內容
-- **記憶整理**：當記憶超過 15 則時，自動使用 AI 整理成摘要
-- **角色隔離**：每個角色的記憶完全獨立
+## 管理命令
 
-### 對話觸發
-- **提及觸發**：`@Bot 你好`
-- **關鍵字觸發**：`沈澤叔叔，今天天氣如何？`
-
-### 群組對話功能
-- **活躍使用者追蹤**：自動記錄參與對話的使用者
-- **群組上下文**：BOT 了解整個對話脈絡
-- **BOT回應追蹤**：記錄BOT自己的發言，確保對話連續性
-- **智能提及**：BOT 可以自然地提及其他活躍使用者
-- **對話摘要**：生成群組對話的智能摘要
-
-### 管理命令
 - `/restart` - 重啟 Bot
 - `/info` - 顯示角色資訊
 - `/memory_stats` - 顯示記憶統計
@@ -284,29 +239,65 @@ NEW_CHARACTER_TOKEN=your_new_character_bot_token_here
 ## 故障排除
 
 ### 角色無法回應
-1. 檢查 Discord Token 是否正確
-2. 確認 Firestore 中有對應的角色設定
-3. 檢查伺服器和頻道權限設定
-4. 確認關鍵字設定正確
+1. ✅ 檢查 Discord Token 是否正確
+2. ✅ 確認 Firestore 中有對應的角色設定
+3. ✅ 檢查伺服器和頻道權限設定
+4. ✅ 確認關鍵字設定正確
 
 ### 記憶無法儲存
-1. 確認 Firebase 連線正常
-2. 檢查 Firestore 權限設定
-3. 查看錯誤日誌
+1. ✅ 確認 Firebase 連線正常
+2. ✅ 檢查 Firestore 權限設定
+3. ✅ 查看錯誤日誌
+4. ✅ 檢查 `GOOGLE_API_KEY` 是否正確設定
 
 ### Bot 無法啟動
-1. 檢查環境變數設定
-2. 確認所有相依套件已安裝
-3. 檢查 Python 版本 (需要 3.9+)
+1. ✅ 檢查環境變數設定
+2. ✅ 確認所有相依套件已安裝：`pip install -r requirements.txt`
+3. ✅ 檢查 Python 版本 (需要 3.9+)
+4. ✅ 確認 `characters.json` 格式正確
+
+### Gemini API 相關問題
+1. ✅ 檢查 `GOOGLE_API_KEY` 是否正確
+2. ✅ 確認 API 配額是否足夠
+3. ✅ 檢查網路連線
+4. ✅ 查看安全過濾器設定是否適當
 
 ## 環境需求
 
-- Python 3.9+
-- Discord.py
-- Firebase Admin SDK
-- Google Generative AI
-- 其他相依套件請參考 `requirements.txt`
+- **Python 3.9+**
+- **Discord.py >= 2.3.0**
+- **Firebase Admin SDK >= 6.0.0**
+- **Google Generative AI == 0.8.3**
+- **其他相依套件**請參考 `requirements.txt`
+
+## 🔧 開發說明
+
+### 型別檢查
+```bash
+# 執行 mypy 型別檢查
+mypy core/
+```
+
+### 程式碼結構
+- **模組化設計**：核心功能分離，易於維護
+- **全域配置**：統一的 AI 安全設定
+- **錯誤處理**：完整的異常處理機制
+- **日誌記錄**：詳細的運行日誌
+
+### 自動部署
+專案包含 GitHub Actions 配置，支援自動重啟部署。
 
 ## 授權
 
-此專案僅供個人使用和學習目的。 
+此專案僅供個人使用和學習目的。
+
+---
+
+## 📞 支援
+
+如果您遇到問題或有建議，請：
+1. 檢查本 README 的故障排除部分
+2. 查看程式碼中的註解和錯誤訊息
+3. 確認環境設定是否正確
+
+**祝您使用愉快！** 🎉 
