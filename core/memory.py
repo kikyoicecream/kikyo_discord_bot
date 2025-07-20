@@ -3,7 +3,8 @@
 記憶管理模組
 負責角色的記憶存取和管理
 """
-
+from dotenv import load_dotenv
+load_dotenv()
 import json
 import os
 import asyncio
