@@ -27,7 +27,7 @@
     "name": "范丞㰕",
     "display_name": "范丞㰕",
     "token_env": "FAN_CHENGXI_TOKEN",
-    "proactive_keywords": ["范丞㰕", "丞㰕", "寶寶"],
+    "proactive_keywords": ["范丞㰕", "丞㰕", "寶寶", "小㰕", "狗狗", "寶貝"],
     "gemini_config": {
       "temperature": 1.0,
       "top_k": 40,
