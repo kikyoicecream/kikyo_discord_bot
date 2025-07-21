@@ -6,6 +6,7 @@ import sys
 import time
 import asyncio
 from dotenv import load_dotenv
+load_dotenv()
 from core.character_registry_custom import CharacterRegistry
 from core import memory
 from typing import List, Optional, Dict
@@ -31,7 +32,6 @@ class CharacterBot:
         )
         
         # 載入環境變數
-        load_dotenv()
         self.token = os.getenv(token_env_var)
         
         # 權限設定 - 支援個別角色權限
