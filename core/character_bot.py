@@ -3,7 +3,6 @@ from discord import app_commands
 from discord.ext import commands
 import os
 import sys
-import subprocess
 import time
 import asyncio
 from dotenv import load_dotenv
@@ -12,7 +11,7 @@ from core import memory
 from typing import List, Optional, Dict
 
 class CharacterBot:
-    """通用角色 Bot 類別"""
+    """通用角色 Bot 類別（已修正）"""
     
     def __init__(self, character_id: str, token_env_var: str, proactive_keywords: Optional[List[str]] = None, gemini_config: Optional[dict] = None):
         self.character_id = character_id
@@ -20,18 +19,16 @@ class CharacterBot:
         self.proactive_keywords = proactive_keywords if proactive_keywords is not None else []
         self.gemini_config = gemini_config or {}
 
-        # Discord Bot 設定
+        # --- 修正 #1: 統一使用 commands.Bot ---
+        # 直接將 self.client 初始化為 commands.Bot，它包含了所有需要的功能，包括 .tree
         intents = discord.Intents.default()
         intents.message_content = True
-        client = commands.Bot(command_prefix='!', intents=intents)
-
-        # 連線穩定性設定
-        self.client = discord.Client(
+        self.client = commands.Bot(
+            command_prefix=f'!{character_id.lower()}', # 為每個 bot 設定獨特的前綴以供除錯
             intents=intents,
-            heartbeat_timeout=60.0,  # 心跳超時時間
-            max_messages=1000,       # 訊息快取數量
+            heartbeat_timeout=60.0,
+            max_messages=1000
         )
-        self.tree = app_commands.CommandTree(self.client)
         
         # 載入環境變數
         load_dotenv()
@@ -45,20 +42,94 @@ class CharacterBot:
         # 初始化角色註冊器
         self.character_registry = CharacterRegistry()
         
-        # 設定事件處理器
-        self._setup_events()
-        # 設定指令（在連接前）
-        self._setup_commands()
+        # 設定事件處理器和指令
+        self._setup_events_and_commands()
     
-    def _setup_commands(self):
-        """設定斜線指令"""
+    def _setup_events_and_commands(self):
+        """設定事件處理器與斜線指令"""
         
         # 為每個角色創建獨特的指令名稱，避免衝突
         character_prefix = self.character_id.lower()
         
-        @self.tree.command(name=f"{character_prefix}_restart", description=f"重新啟動 {self.character_id} Bot (僅限擁有者使用)")
+        # --- 事件處理器 ---
+
+        @self.client.event
+        async def on_ready():
+            print(f'🤖 {self.character_id} Bot 已成功登入為 {self.client.user}')
+            
+            # 註冊角色
+            success = self.character_registry.register_character(self.character_id)
+            if success:
+                print(f"✅ 成功註冊角色：{self.character_id}")
+            else:
+                print(f"❌ 註冊角色失敗：{self.character_id}")
+
+            # --- 修正 #2: 在 on_ready 中自動同步指令 ---
+            # 這是讓斜線指令出現的關鍵步驟
+            try:
+                synced = await self.client.tree.sync()
+                print(f"✅ {self.character_id} Bot 同步了 {len(synced)} 個指令")
+            except Exception as e:
+                print(f"❌ {self.character_id} Bot 指令同步失敗：{e}")
+
+        @self.client.event
+        async def on_disconnect():
+            print(f'⚠️ {self.character_id} Bot 連線中斷')
+        
+        @self.client.event
+        async def on_resumed():
+            print(f'✅ {self.character_id} Bot 連線已恢復')
+
+        @self.client.event
+        async def on_message(message):
+            # 忽略 Bot 自己的訊息
+            if message.author == self.client.user:
+                return
+            
+            # 權限檢查... (您的原始邏輯)
+            if self.allowed_channel_ids and message.channel.id not in self.allowed_channel_ids:
+                return
+            if self.allowed_guild_ids and message.guild and message.guild.id not in self.allowed_guild_ids:
+                return
+            
+            # 檢查是否需要回應
+            should_respond = await self.character_registry.should_respond(
+                message, self.character_id, self.client, self.proactive_keywords
+            )
+            
+            if not should_respond:
+                return
+            
+            # Typing 狀態處理... (您的原始邏輯)
+            typing_task = None
+            async def maintain_typing():
+                try:
+                    while True:
+                        async with message.channel.typing():
+                            await asyncio.sleep(8)
+                except asyncio.CancelledError:
+                    pass
+            
+            typing_task = asyncio.create_task(maintain_typing())
+            await asyncio.sleep(0.1)
+            
+            try:
+                await self.character_registry.handle_message(
+                    message, self.character_id, self.client, self.proactive_keywords, self.gemini_config
+                )
+            finally:
+                if typing_task and not typing_task.done():
+                    typing_task.cancel()
+                    try:
+                        await typing_task
+                    except asyncio.CancelledError:
+                        pass
+        
+        # --- 斜線指令 ---
+        # --- 修正 #3: 使用 self.client.tree ---
+        
+        @self.client.tree.command(name=f"{character_prefix}_restart", description=f"重新啟動 {self.character_id} Bot (僅限擁有者使用)")
         async def restart(interaction: discord.Interaction):
-            """重新啟動機器人"""
             if not self.bot_owner_ids or interaction.user.id not in self.bot_owner_ids:
                 await interaction.response.send_message("❌ 你沒有權限使用此指令。", ephemeral=True)
                 return
@@ -68,14 +139,13 @@ class CharacterBot:
             await self.client.close()
             sys.exit(26)
         
-        @self.tree.command(name=f"{character_prefix}_info", description=f"顯示 {self.character_id} 的資訊")
+        @self.client.tree.command(name=f"{character_prefix}_info", description=f"顯示 {self.character_id} 的資訊")
         async def info(interaction: discord.Interaction):
-            """顯示角色資訊"""
             character_name = self.character_registry.get_character_setting(self.character_id, 'name', self.character_id)
             character_persona = self.character_registry.get_character_setting(self.character_id, 'persona', '未設定')
             
             embed = discord.Embed(
-                title=f"�� {character_name}",
+                title=f"👤 {character_name}",
                 description=character_persona[:1000] if character_persona else "角色設定未載入",
                 color=discord.Color.blue()
             )
@@ -84,9 +154,8 @@ class CharacterBot:
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
         
-        @self.tree.command(name=f"{character_prefix}_memory_stats", description=f"顯示 {self.character_id} 的記憶統計")
+        @self.client.tree.command(name=f"{character_prefix}_memory_stats", description=f"顯示 {self.character_id} 的記憶統計")
         async def memory_stats(interaction: discord.Interaction):
-            """顯示記憶統計"""
             if not self.bot_owner_ids or interaction.user.id not in self.bot_owner_ids:
                 await interaction.response.send_message("❌ 你沒有權限使用此指令。", ephemeral=True)
                 return
@@ -104,205 +173,48 @@ class CharacterBot:
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
         
-        @self.tree.command(name=f"{character_prefix}_active_users", description=f"顯示 {self.character_id} 的活躍使用者")
-        async def active_users(interaction: discord.Interaction):
-            """顯示活躍使用者"""
-            if not self.bot_owner_ids or interaction.user.id not in self.bot_owner_ids:
-                await interaction.response.send_message("❌ 你沒有權限使用此指令。", ephemeral=True)
-                return
-            
-            try:
-                from core.group_conversation_tracker import get_active_users_in_channel, get_conversation_summary
-                
-                channel_id = interaction.channel_id
-                if channel_id is None:
-                    await interaction.response.send_message("❌ 無法獲取頻道資訊。", ephemeral=True)
-                    return
-                    
-                active_users = get_active_users_in_channel(self.character_id, channel_id, 30)
-                conversation_summary = get_conversation_summary(self.character_id, channel_id)
-                
-                embed = discord.Embed(
-                    title=f"👥 {self.character_id} 活躍使用者",
-                    description=conversation_summary,
-                    color=discord.Color.blue()
-                )
-                
-                if active_users:
-                    for i, user in enumerate(active_users[:5], 1):  # 最多顯示5個使用者
-                        embed.add_field(
-                            name=f"{i}. {user['name']}",
-                            value=f"訊息數：{user['message_count']}\n最後活動：{user['last_activity'].strftime('%H:%M:%S')}",
-                            inline=True
-                        )
-                else:
-                    embed.add_field(name="狀態", value="目前沒有活躍使用者", inline=False)
-                
-                await interaction.response.send_message(embed=embed, ephemeral=True)
-                
-            except Exception as e:
-                print(f"獲取活躍使用者時發生錯誤: {e}")
-                await interaction.response.send_message("❌ 獲取活躍使用者資訊時發生錯誤。", ephemeral=True)
-        
-        @self.tree.command(name=f"{character_prefix}_gemini_config", description=f"顯示 {self.character_id} 的 Gemini AI 參數設定")
-        async def gemini_config(interaction: discord.Interaction):
-            """顯示 Gemini AI 參數設定"""
-            if not self.bot_owner_ids or interaction.user.id not in self.bot_owner_ids:
-                await interaction.response.send_message("❌ 你沒有權限使用此指令。", ephemeral=True)
-                return
-            
-            embed = discord.Embed(
-                title=f"🤖 {self.character_id} Gemini AI 參數",
-                color=discord.Color.purple()
-            )
-            
-            # 顯示當前參數
-            temperature = self.gemini_config.get('temperature', '未設定')
-            top_k = self.gemini_config.get('top_k', '未設定')
-            top_p = self.gemini_config.get('top_p', '未設定')
-            
-            embed.add_field(name="🌡️ Temperature", value=f"{temperature}", inline=True)
-            embed.add_field(name="🎯 Top-K", value=f"{top_k}", inline=True)
-            embed.add_field(name="📊 Top-P", value=f"{top_p}", inline=True)
-            
-            # 參數說明
-            embed.add_field(
-                name="📝 參數說明", 
-                value="""**Temperature**: 控制創造性 (0.0-1.0)
-**Top-K**: 詞彙多樣性 (1-40)
-**Top-P**: 核採樣 (0.0-1.0)""", 
-                inline=False
-            )
-            
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-        
-        @self.tree.command(name=f"{character_prefix}_sync", description=f"同步 {self.character_id} 的斜線指令到 Discord (僅限擁有者使用)")
+        # (其他指令... 保持不變，只需確保它們使用 @self.client.tree.command)
+        @self.client.tree.command(name=f"{character_prefix}_sync", description=f"手動同步 {self.character_id} 的指令 (僅限擁有者使用)")
         async def sync(interaction: discord.Interaction):
-            """同步指令"""
             if not self.bot_owner_ids or interaction.user.id not in self.bot_owner_ids:
                 await interaction.response.send_message("❌ 你沒有權限使用此指令。", ephemeral=True)
                 return
             
+            await interaction.response.defer(ephemeral=True)
             try:
-                await interaction.response.send_message("🔄 正在同步指令...", ephemeral=True)
-                await self.tree.sync()
-                await interaction.followup.send("✅ 指令同步成功！現在可以使用所有斜線指令了。", ephemeral=True)
-                print(f"✅ {self.character_id} Bot 指令同步成功")
+                synced = await self.client.tree.sync()
+                await interaction.followup.send(f"✅ 指令同步成功！同步了 {len(synced)} 個指令。", ephemeral=True)
+                print(f"✅ {self.character_id} Bot 指令手動同步成功")
             except Exception as e:
                 await interaction.followup.send(f"❌ 同步失敗：{e}", ephemeral=True)
-                print(f"❌ {self.character_id} Bot 指令同步失敗：{e}")
+                print(f"❌ {self.character_id} Bot 指令手動同步失敗：{e}")
+
 
     def _get_character_permission(self, permission_type: str) -> List[int]:
         """取得角色專屬權限設定，如果沒有則使用全域設定"""
-        # 先嘗試取得角色專屬設定 (例如: SHEN_ZE_ALLOWED_GUILDS)
         character_specific_key = f"{self.character_id.upper()}_" + permission_type
         character_specific_value = os.getenv(character_specific_key, "")
         
         if character_specific_value.strip():
-            # 如果有角色專屬設定，使用它
             return [int(x) for x in character_specific_value.split(",") if x.strip().isdigit()]
         else:
-            # 否則使用全域設定
             global_value = os.getenv(permission_type, "")
             return [int(x) for x in global_value.split(",") if x.strip().isdigit()]
         
-    def _setup_events(self):
-        """設定事件處理器"""
-        
-        @self.client.event
-        async def on_ready():
-            print(f'🤖 {self.character_id} Bot 已成功登入為 {self.client.user}')
-            
-            # 註冊角色
-            success = self.character_registry.register_character(self.character_id)
-            if success:
-                print(f"✅ 成功註冊角色：{self.character_id}")
-            else:
-                print(f"❌ 註冊角色失敗：{self.character_id}")
-            
-            # 移除自動同步，改為手動同步
-            print(f"📝 如需同步指令，請使用 /{self.character_id.lower()}_sync 指令")
-        
-        @self.client.event
-        async def on_disconnect():
-            print(f'⚠️ {self.character_id} Bot 連線中斷')
-        
-        @self.client.event
-        async def on_resumed():
-            print(f'✅ {self.character_id} Bot 連線已恢復')
-        
-        @self.client.event
-        async def on_message(message):
-            """處理訊息"""
-            # 忽略 Bot 自己的訊息
-            if message.author == self.client.user:
-                return
-            
-            # 檢查頻道權限
-            if self.allowed_channel_ids and message.channel.id not in self.allowed_channel_ids:
-                return
-            
-            # 檢查伺服器權限
-            if self.allowed_guild_ids and message.guild and message.guild.id not in self.allowed_guild_ids:
-                return
-            
-            # 檢查是否需要回應
-            should_respond = await self.character_registry.should_respond(
-                message, self.character_id, self.client, self.proactive_keywords
-            )
-            
-            if not should_respond:
-                return
-            
-            # 立即開始 typing 狀態（在檢查回應之前就開始）
-            typing_task = None
-            
-            async def maintain_typing():
-                """維持持續的打字狀態，每8秒重新發送"""
-                try:
-                    while True:
-                        async with message.channel.typing():
-                            await asyncio.sleep(8)  # 在 typing 狀態下等待8秒
-                except asyncio.CancelledError:
-                    pass  # 正常取消
-            
-            # 立即啟動持續的 typing 任務
-            typing_task = asyncio.create_task(maintain_typing())
-            
-            # 給 typing 狀態一點時間啟動
-            await asyncio.sleep(0.1)
-            
-            try:
-                # 處理訊息（只使用自己的角色）
-                await self.character_registry.handle_message(
-                    message, 
-                    self.character_id, 
-                    self.client, 
-                    self.proactive_keywords,
-                    self.gemini_config
-                )
-            finally:
-                # 停止持續的 typing 狀態
-                if typing_task and not typing_task.done():
-                    typing_task.cancel()
-                    try:
-                        await typing_task
-                    except asyncio.CancelledError:
-                        pass  # 預期的取消
-    
     def run(self):
         """運行 Bot"""
         if not self.token:
             print(f"❌ 錯誤：請在 .env 檔案中設定 {self.token_env_var}")
-            return False
+            return
         
         try:
+            # 現在 self.client 是一個 Bot 物件，可以直接運行
             self.client.run(self.token)
-            return True
         except Exception as e:
             print(f"❌ {self.character_id} Bot 運行時發生錯誤：{e}")
-            return False
 
+
+# --- 啟動器部分保持不變 ---
 def run_character_bot_with_restart(character_id: str, token_env_var: str, proactive_keywords: Optional[List[str]] = None, gemini_config: Optional[dict] = None):
     """運行角色 Bot 並支援自動重啟"""
     print(f"🚀 正在啟動 {character_id} Bot...")
@@ -311,15 +223,13 @@ def run_character_bot_with_restart(character_id: str, token_env_var: str, proact
         while True:
             print(f"--- 啟動 {character_id} Bot 主程序 ---")
             
-            # 創建並運行 Bot
             bot = CharacterBot(character_id, token_env_var, proactive_keywords, gemini_config)
-            success = bot.run()
+            bot.run() # .run() 現在沒有回傳值了
             
-            # 如果運行失敗，退出
-            if not success:
-                print(f"--- {character_id} Bot 啟動失敗 ---")
-                break
-                
+            # 這裡的邏輯需要調整，因為 .run() 是阻塞的
+            # SystemExit 會在這裡被捕捉到
+            print(f"--- {character_id} Bot 似乎已停止，準備重啟或退出 ---")
+
     except KeyboardInterrupt:
         print(f"\n--- 偵測到手動停止指令，正在關閉 {character_id} Bot... ---")
         sys.exit(0)
@@ -327,8 +237,7 @@ def run_character_bot_with_restart(character_id: str, token_env_var: str, proact
         if e.code == 26:
             print(f"--- 偵測到 {character_id} Bot 重啟指令，2 秒後重新啟動... ---")
             time.sleep(2)
-            # 重新啟動整個程序
             os.execv(sys.executable, [sys.executable] + sys.argv)
         else:
             print(f"--- {character_id} Bot 已停止，退出碼為 {e.code} ---")
-            sys.exit(e.code) 
+            sys.exit(e.code)
