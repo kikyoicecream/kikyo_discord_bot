@@ -1,4 +1,5 @@
 import discord
+from discord.ext import commands
 from discord import app_commands
 import os
 import sys
@@ -22,6 +23,7 @@ class CharacterBot:
         # Discord Bot 設定
         intents = discord.Intents.default()
         intents.message_content = True
+        client = commands.Bot(command_prefix='!', intents=intents)
         
         # 連線穩定性設定
         self.client = discord.Client(
@@ -149,7 +151,10 @@ class CharacterBot:
     def _setup_commands(self):
         """設定斜線指令"""
         
-        @self.tree.command(name="restart", description=f"重新啟動 {self.character_id} Bot (僅限擁有者使用)")
+        # 為每個角色創建獨特的指令名稱，避免衝突
+        character_prefix = self.character_id.lower()
+        
+        @self.tree.command(name=f"{character_prefix}_restart", description=f"重新啟動 {self.character_id} Bot (僅限擁有者使用)")
         async def restart(interaction: discord.Interaction):
             """重新啟動機器人"""
             if not self.bot_owner_ids or interaction.user.id not in self.bot_owner_ids:
@@ -161,7 +166,7 @@ class CharacterBot:
             await self.client.close()
             sys.exit(26)
         
-        @self.tree.command(name="info", description=f"顯示 {self.character_id} 的資訊")
+        @self.tree.command(name=f"{character_prefix}_info", description=f"顯示 {self.character_id} 的資訊")
         async def info(interaction: discord.Interaction):
             """顯示角色資訊"""
             character_name = self.character_registry.get_character_setting(self.character_id, 'name', self.character_id)
@@ -177,7 +182,7 @@ class CharacterBot:
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
         
-        @self.tree.command(name="memory_stats", description=f"顯示 {self.character_id} 的記憶統計")
+        @self.tree.command(name=f"{character_prefix}_memory_stats", description=f"顯示 {self.character_id} 的記憶統計")
         async def memory_stats(interaction: discord.Interaction):
             """顯示記憶統計"""
             if not self.bot_owner_ids or interaction.user.id not in self.bot_owner_ids:
@@ -197,7 +202,7 @@ class CharacterBot:
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
         
-        @self.tree.command(name="active_users", description=f"顯示 {self.character_id} 的活躍使用者")
+        @self.tree.command(name=f"{character_prefix}_active_users", description=f"顯示 {self.character_id} 的活躍使用者")
         async def active_users(interaction: discord.Interaction):
             """顯示活躍使用者"""
             if not self.bot_owner_ids or interaction.user.id not in self.bot_owner_ids:
@@ -237,7 +242,7 @@ class CharacterBot:
                 print(f"獲取活躍使用者時發生錯誤: {e}")
                 await interaction.response.send_message("❌ 獲取活躍使用者資訊時發生錯誤。", ephemeral=True)
         
-        @self.tree.command(name="gemini_config", description=f"顯示 {self.character_id} 的 Gemini AI 參數設定")
+        @self.tree.command(name=f"{character_prefix}_gemini_config", description=f"顯示 {self.character_id} 的 Gemini AI 參數設定")
         async def gemini_config(interaction: discord.Interaction):
             """顯示 Gemini AI 參數設定"""
             if not self.bot_owner_ids or interaction.user.id not in self.bot_owner_ids:
@@ -269,7 +274,7 @@ class CharacterBot:
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
         
-        @self.tree.command(name="sync", description="同步斜線指令到 Discord (僅限擁有者使用)")
+        @self.tree.command(name=f"{character_prefix}_sync", description=f"同步 {self.character_id} 的斜線指令到 Discord (僅限擁有者使用)")
         async def sync(interaction: discord.Interaction):
             """同步指令"""
             if not self.bot_owner_ids or interaction.user.id not in self.bot_owner_ids:
