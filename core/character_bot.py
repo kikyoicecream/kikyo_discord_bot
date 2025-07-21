@@ -268,6 +268,22 @@ class CharacterBot:
             )
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
+        
+        @self.tree.command(name="sync", description="同步斜線指令到 Discord (僅限擁有者使用)")
+        async def sync(interaction: discord.Interaction):
+            """同步指令"""
+            if not self.bot_owner_ids or interaction.user.id not in self.bot_owner_ids:
+                await interaction.response.send_message("❌ 你沒有權限使用此指令。", ephemeral=True)
+                return
+            
+            try:
+                await interaction.response.send_message("🔄 正在同步指令...", ephemeral=True)
+                await self.tree.sync()
+                await interaction.followup.send("✅ 指令同步成功！現在可以使用所有斜線指令了。", ephemeral=True)
+                print(f"✅ {self.character_id} Bot 指令同步成功")
+            except Exception as e:
+                await interaction.followup.send(f"❌ 同步失敗：{e}", ephemeral=True)
+                print(f"❌ {self.character_id} Bot 指令同步失敗：{e}")
     
     def run(self):
         """運行 Bot"""
