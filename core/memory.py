@@ -68,8 +68,8 @@ class MemoryManager:
             # 使用 Gemini API 整理和摘要記憶
             summarized_memory = await self._summarize_memory_with_gemini(content, user_name, character_id)
             
-            # 使用新的路徑結構：/character_id/users/memory/user_id
-            doc_ref = self.db.collection(character_id).document('users').collection('memory').document(user_id)
+            # 使用新的路徑結構：/character_id/users/memories/user_id
+            doc_ref = self.db.collection(character_id).document('users').collection('memories').document(user_id)
             
             # 獲取現有記憶
             doc = doc_ref.get()  # type: ignore
@@ -112,8 +112,8 @@ class MemoryManager:
             return []
             
         try:
-            # 使用新的路徑結構：/character_id/users/memory/user_id
-            doc_ref = self.db.collection(character_id).document('users').collection('memory').document(user_id)
+            # 使用新的路徑結構：/character_id/users/memories/user_id
+            doc_ref = self.db.collection(character_id).document('users').collection('memories').document(user_id)
             doc = doc_ref.get()  # type: ignore
             
             if doc.exists:

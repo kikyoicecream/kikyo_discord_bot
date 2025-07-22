@@ -130,7 +130,6 @@ class CharacterBot:
                         pass
         
         # --- 斜線指令 ---
-        # --- 修正 #3: 使用 self.client.tree ---
         
         @self.client.tree.command(name=f"{character_prefix}_restart", description=f"重新啟動 {self.character_id} Bot (僅限擁有者使用)")
         async def restart(interaction: discord.Interaction):

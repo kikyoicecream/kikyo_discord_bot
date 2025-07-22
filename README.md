@@ -160,12 +160,12 @@ GU_BEICHEN_ALLOWED_CHANNELS=遊戲頻道ID
 ```
 your-project/
 ├── character_id/
-│   ├── profile/                # 角色設定
-│   └── users/
-│       └── memory/
+│   ├── profile/ # 角色設定
+│   └── users/ # 參與對話的人
+│       └── memories/
 │           └── user_id/
-│               ├── permanent_memories: []  # 永久記憶
-│               ├── dynamic_memories: []    # 動態記憶
+│               ├── permanent_memories: []
+│               ├── dynamic_memories: []
 │               └── last_updated: timestamp
 ```
 
