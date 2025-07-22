@@ -44,7 +44,11 @@ class CharacterBot:
         
         # 設定事件處理器和指令
         self._setup_events_and_commands()
-    
+        
+    def _get_character_name(self):
+        """取得角色名稱"""
+        return self.character_registry.get_character_setting(self.character_id, 'name', self.character_id)
+
     def _setup_events_and_commands(self):
         """設定事件處理器與斜線指令"""
         
@@ -130,18 +134,19 @@ class CharacterBot:
         
         @self.client.tree.command(name=f"{character_prefix}_restart", description=f"重新啟動 {self.character_id} Bot (僅限擁有者使用)")
         async def restart(interaction: discord.Interaction):
+            character_name = self._get_character_name()
             if not self.bot_owner_ids or interaction.user.id not in self.bot_owner_ids:
                 await interaction.response.send_message("❌ 你沒有權限使用此指令。", ephemeral=True)
                 return
 
             await interaction.response.send_message(f"🔄 {self.character_id} Bot 正在重新啟動⋯⋯", ephemeral=True)
-            print(f"--- 由擁有者觸發 {self.character_id} Bot 重新啟動 ---")
+            print(f"--- 由擁有者觸發 {character_name} Bot 重新啟動 ---")
             await self.client.close()
             sys.exit(26)
         
         @self.client.tree.command(name=f"{character_prefix}_info", description=f"顯示 {self.character_id} 的資訊")
         async def info(interaction: discord.Interaction):
-            character_name = self.character_registry.get_character_setting(self.character_id, 'name', self.character_id)
+            character_name = self._get_character_name()
             character_persona = self.character_registry.get_character_setting(self.character_id, 'persona', '未設定')
             
             embed = discord.Embed(
@@ -160,12 +165,13 @@ class CharacterBot:
                 await interaction.response.send_message("❌ 你沒有權限使用此指令。", ephemeral=True)
                 return
             
+            character_name = self._get_character_name()
             user_memories = memory.get_character_user_memory(self.character_id, str(interaction.user.id))
             memory_count = len(user_memories) if user_memories else 0
             total_chars = sum(len(mem) for mem in user_memories) if user_memories else 0
             
             embed = discord.Embed(
-                title=f"📊 {self.character_id} 記憶統計",
+                title=f"📊 {character_name} 記憶統計",
                 color=discord.Color.green()
             )
             embed.add_field(name="記憶數量", value=f"{memory_count} 則", inline=True)
@@ -188,7 +194,6 @@ class CharacterBot:
             except Exception as e:
                 await interaction.followup.send(f"❌ 同步失敗：{e}", ephemeral=True)
                 print(f"❌ {self.character_id} Bot 指令手動同步失敗：{e}")
-
 
     def _get_character_permission(self, permission_type: str) -> List[int]:
         """取得角色專屬權限設定，如果沒有則使用全域設定"""
