@@ -37,7 +37,7 @@ class MultiBotLauncher:
             for character_id, character_info in characters_data.items():
                 if character_info.get('enabled', True):  # 只載入啟用的角色
                     bots.append({
-                        'name': character_info.get('display_name', character_info.get('name', character_id)),
+                        'name': character_info.get('name', character_id),
                         'character_id': character_id,
                         'token_env': character_info['token_env'],
                         'process': None,

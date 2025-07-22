@@ -1,7 +1,6 @@
 {
   "shen_ze": {
     "name": "沈澤",
-    "display_name": "沈澤",
     "token_env": "SHEN_ZE_TOKEN",
     "proactive_keywords": ["叔叔"],
     "gemini_config": {
@@ -13,7 +12,6 @@
   },
   "gu_beichen": {
     "name": "顧北辰",
-    "display_name": "顧北辰",
     "token_env": "GU_BEICHEN_TOKEN",
     "proactive_keywords": ["顧北辰", "顧總", "辰辰"],
     "gemini_config": {
@@ -25,7 +23,6 @@
   },
   "fan_chengxi": {
     "name": "范丞㰕",
-    "display_name": "范丞㰕",
     "token_env": "FAN_CHENGXI_TOKEN",
     "proactive_keywords": ["范丞㰕", "丞㰕", "寶寶", "小㰕", "狗狗", "寶貝"],
     "gemini_config": {
