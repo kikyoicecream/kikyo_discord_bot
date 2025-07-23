@@ -108,6 +108,7 @@ class MultiBotLauncher:
                         # 直接調用 Bot 啟動函數
                         run_character_bot_with_restart(
                             character_id=bot_info['character_id'],
+                            character_name=bot_info['name'],
                             token_env_var=config['token_env'],
                             proactive_keywords=config['proactive_keywords'],
                             gemini_config=gemini_config

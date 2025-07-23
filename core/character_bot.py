@@ -5,6 +5,7 @@ import os
 import sys
 import time
 import asyncio
+import json
 from dotenv import load_dotenv
 load_dotenv()
 from core.character_registry_custom import CharacterRegistry
@@ -74,25 +75,25 @@ class CharacterBot:
             # 註冊角色
             success = self.character_registry.register_character(self.character_id)
             if success:
-                print(f"✅ 成功註冊角色：{self.character_id}")
+                print(f"✅ 成功註冊角色：{self.character_name}")
             else:
-                print(f"❌ 註冊角色失敗：{self.character_id}")
+                print(f"❌ 註冊角色失敗：{self.character_name}")
 
             # --- 修正 #2: 在 on_ready 中自動同步指令 ---
             # 這是讓斜線指令出現的關鍵步驟
             try:
                 synced = await self.client.tree.sync()
-                print(f"✅ {self.character_id} Bot 同步了 {len(synced)} 個指令")
+                print(f"✅ {self.character_name} Bot 同步了 {len(synced)} 個指令")
             except Exception as e:
-                print(f"❌ {self.character_id} Bot 指令同步失敗：{e}")
+                print(f"❌ {self.character_name} Bot 指令同步失敗：{e}")
 
         @self.client.event
         async def on_disconnect():
-            print(f'⚠️ {self.character_id} Bot 連線中斷')
+            print(f'⚠️ {self.character_name} Bot 連線中斷')
         
         @self.client.event
         async def on_resumed():
-            print(f'✅ {self.character_id} Bot 連線已恢復')
+            print(f'✅ {self.character_name} Bot 連線已恢復')
 
         @self.client.event
         async def on_message(message):
@@ -153,7 +154,7 @@ class CharacterBot:
         
         @self.client.tree.command(name=f"{character_prefix}_restart", description=f"重新啟動 {self.character_name} Bot")
         async def restart(interaction: discord.Interaction):
-            await interaction.response.send_message(f"🔄 {self.character_id} Bot 正在重新啟動⋯⋯", ephemeral=True)
+            await interaction.response.send_message(f"🔄 {self.character_name} Bot 正在重新啟動⋯⋯", ephemeral=True)
             print(f"--- 由 {interaction.user.name} 觸發 {self.character_name} Bot 重新啟動 ---")
             await self.client.close()
             sys.exit(26)
@@ -222,24 +223,26 @@ class CharacterBot:
             # 現在 self.client 是一個 Bot 物件，可以直接運行
             self.client.run(self.token)
         except Exception as e:
-            print(f"❌ {self.character_id} Bot 運行時發生錯誤：{e}")
+            print(f"❌ {self.character_name} Bot 運行時發生錯誤：{e}")
 
 
 # --- 啟動器部分保持不變 ---
-def run_character_bot_with_restart(character_id: str, token_env_var: str, proactive_keywords: Optional[List[str]] = None, gemini_config: Optional[dict] = None):
+
+
+def run_character_bot_with_restart(character_id: str, character_name: str, token_env_var: str, proactive_keywords: Optional[List[str]] = None, gemini_config: Optional[dict] = None):
     """運行角色 Bot 並支援自動重啟"""
-    print(f"🚀 正在啟動 {character_id} Bot...")
+    print(f"🚀 正在啟動 {character_name} Bot...")
     
     try:
         while True:
-            print(f"--- 啟動 {character_id} Bot 主程序 ---")
+            print(f"--- 啟動 {character_name} Bot 主程序 ---")
             
             bot = CharacterBot(character_id, token_env_var, proactive_keywords, gemini_config)
             bot.run() # .run() 現在沒有回傳值了
             
             # 這裡的邏輯需要調整，因為 .run() 是阻塞的
             # SystemExit 會在這裡被捕捉到
-            print(f"--- {character_id} Bot 似乎已停止，準備重啟或退出 ---")
+            print(f"--- {character_name} Bot 似乎已停止，準備重啟或退出 ---")
 
     except KeyboardInterrupt:
         print(f"\n--- 偵測到手動停止指令，正在關閉 {character_id} Bot... ---")
