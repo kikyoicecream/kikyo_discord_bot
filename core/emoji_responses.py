@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-基於情感關鍵字的智能表情符號回應系統
+基於情感關鍵字的表情符號回應系統
 """
 
 import os
@@ -15,7 +15,7 @@ from typing import Dict, Optional, List
 load_dotenv()
 
 class SmartEmojiResponseManager:
-    """智能表情符號回應管理器"""
+    """表情符號回應管理器"""
     
     def __init__(self):
         self.db = self._initialize_firebase()
@@ -112,7 +112,7 @@ class SmartEmojiResponseManager:
             if doc.exists:
                 data = doc.to_dict()
                 self.cache[character_id] = data
-                print(f"✅ 載入 {character_id} 的智能表情符號配置")
+                print(f"✅ 載入 {character_id} 的表情符號配置")
             else:
                 print(f"❌ {character_id} 的 emoji_system 配置不存在，請在 Firestore 中手動建立")
                 
@@ -190,7 +190,7 @@ class SmartEmojiResponseManager:
         try:
             doc_ref = self.db.collection(character_id).document('emoji_system')
             doc_ref.set(config)
-            print(f"✅ 儲存 {character_id} 的智能表情符號配置")
+            print(f"✅ 儲存 {character_id} 的表情系統配置")
         except Exception as e:
             print(f"❌ 儲存 {character_id} 表情符號配置失敗: {e}")
     
@@ -232,7 +232,7 @@ class SmartEmojiResponseManager:
             self._save_emoji_config(character_id, config)
             
             status = "啟用" if enabled else "停用"
-            print(f"✅ {character_id} 智能表情符號回應已{status}")
+            print(f"✅ {character_id} 表情符號回應已{status}")
             return True
             
         except Exception as e:

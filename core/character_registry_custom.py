@@ -227,8 +227,8 @@ class CharacterRegistry:
                 await message.reply(response, mention_author=False)
             except discord.errors.HTTPException as e:
                 print(f"回覆失敗，改為普通發送：{e}")
-                # 檢查是否是內容長度錯誤
-                if "4000 or fewer in length" in str(e):
+                # 檢查是否是內容長度錯誤 (error code: 50035)
+                if "50035" in str(e) or "4000 or fewer in length" in str(e) or "2000 or fewer in length" in str(e):
                     await message.channel.send("「抱歉，我想講的話太多了……」")
                 else:
                     await message.channel.send(f"{message.author.mention} {response}")
