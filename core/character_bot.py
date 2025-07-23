@@ -109,7 +109,7 @@ class CharacterBot:
                     print(f"😊 {self.character_id} 對關鍵字回應表情符號: {emoji_response}")
                 except Exception as e:
                     print(f"❌ 添加表情符號失敗: {e}")
-                return
+                # 不 return，讓程式繼續處理文字回應
             
             # 檢查是否需要回應
             should_respond = await self.character_registry.should_respond(
