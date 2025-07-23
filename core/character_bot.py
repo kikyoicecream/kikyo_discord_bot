@@ -21,6 +21,12 @@ class CharacterBot:
         self.proactive_keywords = proactive_keywords if proactive_keywords is not None else []
         self.gemini_config = gemini_config or {}
 
+        # 初始化角色註冊器（需要在取得角色名稱之前）
+        self.character_registry = CharacterRegistry()
+        
+        # 取得角色名稱（只呼叫一次）
+        self.character_name = self._get_character_name()
+
         # --- 修正 #1: 統一使用 commands.Bot ---
         # 直接將 self.client 初始化為 commands.Bot，它包含了所有需要的功能，包括 .tree
         intents = discord.Intents.default()
@@ -40,8 +46,7 @@ class CharacterBot:
         self.allowed_channel_ids = self._get_character_permission("ALLOWED_CHANNELS")
         self.bot_owner_ids = self._get_character_permission("BOT_OWNER_IDS")
         
-        # 初始化角色註冊器
-        self.character_registry = CharacterRegistry()
+
         
         # 設定事件處理器和指令
         self._setup_events_and_commands()
@@ -52,7 +57,7 @@ class CharacterBot:
     
     async def _check_emoji_response(self, message) -> Optional[str]:
         """檢查是否需要回應表情符號"""
-        return smart_emoji_manager.get_emoji_response(self.character_id, message.content)
+        return smart_emoji_manager.get_emoji_response(self.character_id, message.content, message.guild)
 
     def _setup_events_and_commands(self):
         """設定事件處理器與斜線指令"""
@@ -146,17 +151,15 @@ class CharacterBot:
         
         # --- 斜線指令 ---
         
-        @self.client.tree.command(name=f"{character_prefix}_restart", description=f"重新啟動 {self.character_id} Bot")
+        @self.client.tree.command(name=f"{character_prefix}_restart", description=f"重新啟動 {self.character_name} Bot")
         async def restart(interaction: discord.Interaction):
-            character_name = self._get_character_name()
             await interaction.response.send_message(f"🔄 {self.character_id} Bot 正在重新啟動⋯⋯", ephemeral=True)
-            print(f"--- 由 {interaction.user.name} 觸發 {character_name} Bot 重新啟動 ---")
+            print(f"--- 由 {interaction.user.name} 觸發 {self.character_name} Bot 重新啟動 ---")
             await self.client.close()
             sys.exit(26)
         
-        @self.client.tree.command(name=f"{character_prefix}_keywords", description=f"顯示 {self.character_id} 的主動關鍵字")
+        @self.client.tree.command(name=f"{character_prefix}_keywords", description=f"顯示 {self.character_name} 的主動關鍵字")
         async def info(interaction: discord.Interaction):
-            character_name = self._get_character_name()
             
             # 取得主動關鍵字
             keywords_text = "無設定"
@@ -164,25 +167,24 @@ class CharacterBot:
                 keywords_text = "、".join(self.proactive_keywords)
             
             embed = discord.Embed(
-                title=f"👤 {character_name}",
+                title=f"👤 {self.character_name}",
                 description=f"**主動關鍵字：**{keywords_text}",
                 color=discord.Color.blue()
             )
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
         
-        @self.client.tree.command(name=f"{character_prefix}_memory", description=f"顯示 {self.character_id} 的記憶內容")
+        @self.client.tree.command(name=f"{character_prefix}_memory", description=f"顯示 {self.character_name} 的記憶內容")
         async def memory_content(interaction: discord.Interaction):
-            character_name = self._get_character_name()
             user_memories = memory.get_character_user_memory(self.character_id, str(interaction.user.id))
             
             if not user_memories:
-                await interaction.response.send_message(f"❌ {character_name} 還沒有與你的記憶。", ephemeral=True)
+                await interaction.response.send_message(f"❌ {self.character_name} 還沒有與你的記憶。", ephemeral=True)
                 return
             
             # 建立記憶內容的 embed
             embed = discord.Embed(
-                title=f"💭 {character_name} 與你的記憶",
+                title=f"💭 {self.character_name} 與你的記憶",
                 description=f"共 {len(user_memories)} 則記憶",
                 color=discord.Color.blue()
             )

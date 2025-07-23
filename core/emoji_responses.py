@@ -44,7 +44,7 @@ class SmartEmojiResponseManager:
             print(f"❌ Firebase 初始化失敗: {e}")
             return None
     
-    def get_emoji_response(self, character_id: str, message_content: str) -> Optional[str]:
+    def get_emoji_response(self, character_id: str, message_content: str, guild=None) -> Optional[str]:
         """檢查訊息並返回對應的情感表情符號"""
         if not self.db:
             return None
@@ -65,28 +65,34 @@ class SmartEmojiResponseManager:
         # 分析訊息情感
         detected_emotion = self._analyze_emotion(message_content, emoji_config)
         
+        # 優先使用情感對應的 emoji
         if detected_emotion:
-            # 從對應的情感表情符號池中隨機選擇
-            emoji_map = emoji_config.get('emoji_map', {})
-            emotion_emojis = emoji_map.get(detected_emotion, [])
+            trigger_emojis = emoji_config.get('trigger_emojis', {})
+            emotion_emojis = trigger_emojis.get(detected_emotion, [])
             
             if emotion_emojis:
                 return random.choice(emotion_emojis)
         
         # 如果沒有檢測到特定情感，從通用表情符號池中隨機選擇
-        emoji_pool = emoji_config.get('emoji_pool', [])
-        if emoji_pool and random.random() < 0.3:  # 30% 機率使用通用表情符號
-            return random.choice(emoji_pool)
+        general_emojis = emoji_config.get('general_emojis', [])
+        if general_emojis and random.random() < 0.3:  # 30% 機率使用通用表情符號
+            return random.choice(general_emojis)
+        
+        # 如果都沒有，嘗試使用伺服器自訂 emoji
+        if guild and hasattr(guild, 'emojis'):
+            server_emojis = list(guild.emojis)
+            if server_emojis and random.random() < 0.2:  # 20% 機率使用伺服器 emoji
+                return str(random.choice(server_emojis))
         
         return None
     
     def _analyze_emotion(self, message_content: str, emoji_config: Dict) -> Optional[str]:
         """分析訊息情感"""
         content = message_content.lower()
-        emotion_keywords = emoji_config.get('emotion_keywords', {})
+        trigger_keywords = emoji_config.get('trigger_keywords', {})
         
         # 檢查每種情感
-        for emotion, keywords in emotion_keywords.items():
+        for emotion, keywords in trigger_keywords.items():
             for keyword in keywords:
                 if keyword.lower() in content:
                     return emotion
@@ -126,14 +132,14 @@ class SmartEmojiResponseManager:
                 return False
             
             config = self.cache[character_id]
-            if 'emotion_keywords' not in config:
-                config['emotion_keywords'] = {}
+            if 'trigger_keywords' not in config:
+                config['trigger_keywords'] = {}
             
-            if emotion not in config['emotion_keywords']:
-                config['emotion_keywords'][emotion] = []
+            if emotion not in config['trigger_keywords']:
+                config['trigger_keywords'][emotion] = []
             
-            if keyword not in config['emotion_keywords'][emotion]:
-                config['emotion_keywords'][emotion].append(keyword)
+            if keyword not in config['trigger_keywords'][emotion]:
+                config['trigger_keywords'][emotion].append(keyword)
                 self._save_emoji_config(character_id, config)
                 print(f"✅ 為 {character_id} 新增情感關鍵字：{emotion} -> {keyword}")
                 return True
@@ -157,14 +163,14 @@ class SmartEmojiResponseManager:
                 return False
             
             config = self.cache[character_id]
-            if 'emoji_map' not in config:
-                config['emoji_map'] = {}
+            if 'trigger_emojis' not in config:
+                config['trigger_emojis'] = {}
             
-            if emotion not in config['emoji_map']:
-                config['emoji_map'][emotion] = []
+            if emotion not in config['trigger_emojis']:
+                config['trigger_emojis'][emotion] = []
             
-            if emoji not in config['emoji_map'][emotion]:
-                config['emoji_map'][emotion].append(emoji)
+            if emoji not in config['trigger_emojis'][emotion]:
+                config['trigger_emojis'][emotion].append(emoji)
                 self._save_emoji_config(character_id, config)
                 print(f"✅ 為 {character_id} 新增情感表情符號：{emotion} -> {emoji}")
                 return True
@@ -194,7 +200,7 @@ class SmartEmojiResponseManager:
             self._load_emoji_config(character_id)
         
         if character_id in self.cache:
-            return self.cache[character_id].get('emotion_keywords', {})
+            return self.cache[character_id].get('trigger_keywords', {})
         
         return {}
     
@@ -204,7 +210,7 @@ class SmartEmojiResponseManager:
             self._load_emoji_config(character_id)
         
         if character_id in self.cache:
-            return self.cache[character_id].get('emoji_map', {})
+            return self.cache[character_id].get('trigger_emojis', {})
         
         return {}
     
@@ -243,6 +249,25 @@ class SmartEmojiResponseManager:
             self.cache.clear()
             for char_id in ['shen_ze', 'gu_beichen', 'fan_chengxi']:
                 self._load_emoji_config(char_id)
+
+    def get_server_emoji_stats(self, guild) -> Dict:
+        """獲取伺服器 emoji 統計資訊"""
+        if not guild or not hasattr(guild, 'emojis'):
+            return {"total": 0, "animated": 0, "static": 0, "sample": []}
+        
+        emojis = list(guild.emojis)
+        animated_count = sum(1 for emoji in emojis if emoji.animated)
+        static_count = len(emojis) - animated_count
+        
+        # 取前5個作為樣本
+        sample = [str(emoji) for emoji in emojis[:5]]
+        
+        return {
+            "total": len(emojis),
+            "animated": animated_count,
+            "static": static_count,
+            "sample": sample
+        }
 
 # 全域實例
 smart_emoji_manager = SmartEmojiResponseManager() 
