@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 from core.character_registry_custom import CharacterRegistry
 from core import memory
+from core.emoji_responses import smart_emoji_manager
 from typing import List, Optional, Dict
 
 class CharacterBot:
@@ -48,6 +49,10 @@ class CharacterBot:
     def _get_character_name(self):
         """取得角色名稱"""
         return self.character_registry.get_character_setting(self.character_id, 'name', self.character_id)
+    
+    async def _check_emoji_response(self, message) -> Optional[str]:
+        """檢查是否需要回應表情符號"""
+        return smart_emoji_manager.get_emoji_response(self.character_id, message.content)
 
     def _setup_events_and_commands(self):
         """設定事件處理器與斜線指令"""
@@ -94,6 +99,16 @@ class CharacterBot:
             if self.allowed_channel_ids and message.channel.id not in self.allowed_channel_ids:
                 return
             if self.allowed_guild_ids and message.guild and message.guild.id not in self.allowed_guild_ids:
+                return
+            
+            # 檢查表情符號回應
+            emoji_response = await self._check_emoji_response(message)
+            if emoji_response:
+                try:
+                    await message.add_reaction(emoji_response)
+                    print(f"😊 {self.character_id} 對關鍵字回應表情符號: {emoji_response}")
+                except Exception as e:
+                    print(f"❌ 添加表情符號失敗: {e}")
                 return
             
             # 檢查是否需要回應
