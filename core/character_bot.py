@@ -173,23 +173,31 @@ class CharacterBot:
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
         
-        @self.client.tree.command(name=f"{character_prefix}_memory_stats", description=f"顯示 {self.character_id} 的記憶統計")
-        async def memory_stats(interaction: discord.Interaction):
-            if not self.bot_owner_ids or interaction.user.id not in self.bot_owner_ids:
-                await interaction.response.send_message("❌ 你沒有權限使用此指令。", ephemeral=True)
-                return
-            
+        @self.client.tree.command(name=f"{character_prefix}_memory", description=f"顯示 {self.character_id} 的記憶內容")
+        async def memory_content(interaction: discord.Interaction):
             character_name = self._get_character_name()
             user_memories = memory.get_character_user_memory(self.character_id, str(interaction.user.id))
-            memory_count = len(user_memories) if user_memories else 0
-            total_chars = sum(len(mem) for mem in user_memories) if user_memories else 0
             
+            if not user_memories:
+                await interaction.response.send_message(f"❌ {character_name} 還沒有與你的記憶。", ephemeral=True)
+                return
+            
+            # 建立記憶內容的 embed
             embed = discord.Embed(
-                title=f"📊 {character_name} 記憶統計",
-                color=discord.Color.green()
+                title=f"💭 {character_name} 與你的記憶",
+                description=f"共 {len(user_memories)} 則記憶",
+                color=discord.Color.blue()
             )
-            embed.add_field(name="記憶數量", value=f"{memory_count} 則", inline=True)
-            embed.add_field(name="總字符數", value=f"{total_chars} 字符", inline=True)
+            
+            # 顯示所有記憶
+            for i, memory_text in enumerate(user_memories, 1):
+                # 限制每則記憶的長度，避免 embed 過長
+                display_text = memory_text[:500] + "..." if len(memory_text) > 500 else memory_text
+                embed.add_field(
+                    name=f"記憶 #{i}",
+                    value=display_text,
+                    inline=False
+                )
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
         
