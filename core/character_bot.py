@@ -5,7 +5,6 @@ import os
 import sys
 import time
 import asyncio
-import json
 from dotenv import load_dotenv
 load_dotenv()
 from core.character_registry_custom import CharacterRegistry
@@ -227,22 +226,20 @@ class CharacterBot:
 
 
 # --- 啟動器部分保持不變 ---
-
-
-def run_character_bot_with_restart(character_id: str, character_name: str, token_env_var: str, proactive_keywords: Optional[List[str]] = None, gemini_config: Optional[dict] = None):
+def run_character_bot_with_restart(character_id: str, token_env_var: str, proactive_keywords: Optional[List[str]] = None, gemini_config: Optional[dict] = None):
     """運行角色 Bot 並支援自動重啟"""
-    print(f"🚀 正在啟動 {character_name} Bot...")
+    print(f"🚀 正在啟動 {character_id} Bot...")
     
     try:
         while True:
-            print(f"--- 啟動 {character_name} Bot 主程序 ---")
+            print(f"--- 啟動 {character_id} Bot 主程序 ---")
             
             bot = CharacterBot(character_id, token_env_var, proactive_keywords, gemini_config)
             bot.run() # .run() 現在沒有回傳值了
             
             # 這裡的邏輯需要調整，因為 .run() 是阻塞的
             # SystemExit 會在這裡被捕捉到
-            print(f"--- {character_name} Bot 似乎已停止，準備重啟或退出 ---")
+            print(f"--- {character_id} Bot 似乎已停止，準備重啟或退出 ---")
 
     except KeyboardInterrupt:
         print(f"\n--- 偵測到手動停止指令，正在關閉 {character_id} Bot... ---")
