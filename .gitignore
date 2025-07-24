@@ -34,3 +34,6 @@ logs/
 *.tmp
 *.temp
 .cache/
+
+# 表情符號系統資料夾
+emoji_system/
