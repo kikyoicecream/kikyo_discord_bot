@@ -44,9 +44,6 @@ class CharacterBot:
         # 權限設定 - 支援個別角色權限
         self.allowed_guild_ids = self._get_character_permission("ALLOWED_GUILDS")
         self.allowed_channel_ids = self._get_character_permission("ALLOWED_CHANNELS")
-        self.bot_owner_ids = self._get_character_permission("BOT_OWNER_IDS")
-        
-
         
         # 設定事件處理器和指令
         self._setup_events_and_commands()
