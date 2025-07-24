@@ -184,8 +184,9 @@ your-project/
 │   │           ├── dynamic_memories: []
 │   │           └── last_updated: timestamp
 │   └── emoji_system/ # 表情符號管理器
-│       ├── emoji_map
-
+│       ├── general_emojis: []
+│       ├── trigger_emojis: {}
+│       └── trigger_keywords: {}
 ```
 
 ## 👥 群組對話追蹤功能

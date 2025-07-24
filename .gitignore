@@ -2,8 +2,6 @@
 .env
 env_v1.txt
 env_*.txt
-serviceAccountKey.json
-discord-bot-kikyo-firebase-adminsdk-fbsvc-*.json
 
 # Python 快取檔案
 __pycache__/
