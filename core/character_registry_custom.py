@@ -59,6 +59,9 @@ class CharacterRegistry:
                 character_data = doc.to_dict()
                 if character_data:  # 確保不是 None
                     self.characters[character_id] = character_data
+                    # 除錯：顯示載入的角色名稱
+                    name = character_data.get('name', '未設定')
+                    print(f"✅ 從 Firestore 載入角色：{name}")
                     return True
                 else:
                     print(f"角色 {character_id} 的設定資料為空")

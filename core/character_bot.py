@@ -24,7 +24,8 @@ class CharacterBot:
         # 初始化角色註冊器（需要在取得角色名稱之前）
         self.character_registry = CharacterRegistry()
         
-        # 取得角色名稱（只呼叫一次）
+        # 先註冊角色，再取得角色名稱
+        self.character_registry.register_character(self.character_id)
         self.character_name = self._get_character_name()
 
         # --- 修正 #1: 統一使用 commands.Bot ---
@@ -68,9 +69,8 @@ class CharacterBot:
         async def on_ready():
             print(f'🤖 {self.character_id} Bot 已成功登入為 {self.client.user}')
             
-            # 註冊角色
-            success = self.character_registry.register_character(self.character_id)
-            if success:
+            # 角色已在初始化時註冊，這裡只需要確認
+            if self.character_id in self.character_registry.characters:
                 print(f"✅ 成功註冊角色：{self.character_name}")
             else:
                 print(f"❌ 註冊角色失敗：{self.character_name}")
@@ -171,7 +171,7 @@ class CharacterBot:
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
         
-        @self.client.tree.command(name=f"{character_prefix}_memory", description=f"顯示 {self.character_name} 的記憶內容")
+        @self.client.tree.command(name=f"{character_prefix}_memories", description=f"顯示 {self.character_name} 的記憶內容")
         async def memory_content(interaction: discord.Interaction):
             user_memories = memory.get_character_user_memory(self.character_id, str(interaction.user.id))
             

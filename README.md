@@ -2,20 +2,9 @@
 
 多角色 Discord Bot 系統，支援獨立的虛擬人物角色，每個角色都有專屬的 Discord Token 和記憶系統。具備 AI 群組對話追蹤功能，讓 BOT 能夠感知多使用者對話環境並自然地與所有參與者互動。
 
-## ✨ 最新更新
-
-- 🔒 **全域安全過濾器**：統一的 Gemini AI 安全過濾器設定
-- 🧠 **改進的記憶系統**：分離永久記憶和動態記憶，更符合使用者偏好的記憶管理
-- 👥 **增強的群組對話追蹤**：更自然的多人對話互動
-- 🎯 **角色啟動器**：簡化的角色 Bot 管理系統
-- 🔧 **簡化指令系統**：移除不必要的 sync 指令，優化指令權限
-- 📝 **關鍵字查詢**：新增 `/{character}_keywords` 指令，方便查看角色關鍵字
-
 ## 快速開始
 
-1. 複製 `.env.example` 為 `.env` 並填入您的設定
-2. 安裝相依套件：`pip install -r requirements.txt`
-3. 使用角色啟動器：`python3 main.py`
+完整安裝文件：https://hackmd.io/@kikyoicecream/H1lydGdree
 
 ## 系統特色
 
@@ -26,7 +15,7 @@
 - 🚀 **自動重啟**：Bot 異常時自動重啟功能
 - 📱 **管理介面**：互動式多 Bot 管理系統
 - 🔒 **安全過濾**：全域 Gemini AI 安全過濾器保護
-- 🎯 **簡化指令**：精簡的斜線指令系統
+- 🎯 **斜線指令**：keyword、memory、restart 三種斜線指令，每個 BOT 都有獨立的指令
 
 ## 檔案結構
 
@@ -226,10 +215,10 @@ your-project/
 - **範例**：`/shen_ze_keywords`、`/gu_beichen_keywords`
 - **顯示內容**：角色名稱和對應的關鍵字列表
 
-#### `/{character_prefix}_memory`
+#### `/{character_prefix}_memories`
 - **功能**：顯示角色與使用者的記憶內容
 - **權限**：所有使用者都可以使用
-- **範例**：`/shen_ze_memory`、`/gu_beichen_memory`
+- **範例**：`/shen_ze_memories`、`/gu_beichen_memories`
 
 ### 指令範例
 
