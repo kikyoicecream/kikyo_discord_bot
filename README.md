@@ -19,37 +19,8 @@
 - 🔒 **安全過濾**：全域 Gemini AI 安全過濾器保護
 - 🎯 **斜線指令**：keyword、memory、restart 三種斜線指令，每個 BOT 都有獨立的指令
 
-
-## 檔案結構
-
-```
-Kikyo Discord BOT/
-├── README.md                    # 主要說明文件
-├── main.py                      # 主程式啟動器
-├── requirements.txt             # Python 套件需求
-├── characters.json              # 角色設定檔
-├── core/                        # 核心系統
-│   ├── character_bot.py         # 通用 Bot 模板
-│   ├── character_registry_custom.py # 角色註冊系統
-│   ├── memory.py                # 記憶管理系統（含全域安全設定）
-│   ├── emoji_responses.py       # 表情符號回應系統
-│   └── group_conversation_tracker.py # 群組對話追蹤系統
-└── emoji_system/                # 表情符號設定
-    ├── fan_chengxi_emoji.json   # 范丞㰕表情符號
-    ├── gu_beichen_emoji.json    # 顧北辰表情符號
-    └── shen_ze_emoji.json       # 沈澤表情符號
-```
-
-
 ## 🧠 記憶系統
 
-### 記憶分類
-系統將記憶分為兩類：
-
-1. **永久記憶**：手動添加的重要資訊，永不刪除
-2. **動態記憶**：自動生成的對話記憶，會被統整
-
-### 記憶管理機制
 - **自動記憶**：每次對話後自動使用 AI 提取重要資訊
 - **智慧統整**：動態記憶超過 15 則時，自動統整成摘要
 - **角色隔離**：每個角色的記憶完全獨立
