@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 import discord
 import firebase_admin
 from firebase_admin import firestore
-from core import memory
+import memory
 
 class CharacterRegistry:
     """簡化的角色註冊器 - 專注於角色設定管理"""
@@ -118,7 +118,7 @@ class CharacterRegistry:
     def _build_group_context(self, character_id: str, channel_id: int, user_name: str) -> str:
         """建構群組對話上下文 - 簡化版本"""
         try:
-            from core.group_conversation_tracker import get_conversation_summary, get_active_users_in_channel, get_recent_conversation_context
+            from group_conversation_tracker import get_conversation_summary, get_active_users_in_channel, get_recent_conversation_context
             
             # 獲取群組摘要
             group_summary = get_conversation_summary(character_id, channel_id)
@@ -194,7 +194,7 @@ class CharacterRegistry:
             
             # 追蹤使用者活動
             try:
-                from core.group_conversation_tracker import track_user_activity
+                from group_conversation_tracker import track_user_activity
                 track_user_activity(character_id, channel_id, message.author.id, user_name, user_prompt)
             except Exception as e:
                 print(f"追蹤使用者活動時發生錯誤: {e}")
@@ -241,7 +241,7 @@ class CharacterRegistry:
             
             # 追蹤BOT回應
             try:
-                from core.group_conversation_tracker import track_bot_response
+                from group_conversation_tracker import track_bot_response
                 track_bot_response(character_id, channel_id, bot_name, response)
             except Exception as e:
                 print(f"追蹤BOT回應時發生錯誤：{e}")

@@ -14,13 +14,12 @@ from typing import Dict, Any, Optional
 from dotenv import load_dotenv
 from google.cloud import firestore
 from google.oauth2 import service_account
-from core.character_bot import run_character_bot_with_restart
+from character_bot import run_character_bot_with_restart
 
 # 載入環境變數
 load_dotenv()
 
-# 確保可以導入 core 模組
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# 不再需要 sys.path 設定，因為所有檔案都在根目錄
 
 class MultiBotLauncher:
     """多 Bot 啟動器"""

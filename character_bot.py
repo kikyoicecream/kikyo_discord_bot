@@ -10,9 +10,9 @@ from dotenv import load_dotenv
 load_dotenv()
 from google.cloud import firestore
 from google.oauth2 import service_account
-from core.character_registry_custom import CharacterRegistry
-from core import memory
-from core.emoji_responses import smart_emoji_manager
+from character_registry_custom import CharacterRegistry
+import memory
+from emoji_responses import smart_emoji_manager
 from typing import List, Optional, Dict
 
 class CharacterBot:
