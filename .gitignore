@@ -37,3 +37,6 @@ logs/
 
 # 表情符號系統資料夾
 emoji_system/
+
+# 角色配置檔案（已遷移到Firestore）
+characters.json
