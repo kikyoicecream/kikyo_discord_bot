@@ -75,13 +75,15 @@ class SmartEmojiResponseManager:
         
         # 如果沒有檢測到特定情感，從通用表情符號池中隨機選擇
         general_emojis = emoji_config.get('general_emojis', [])
-        if general_emojis and random.random() < 0.3:  # 30% 機率使用通用表情符號
+        general_probability = emoji_config.get('general_probability')  # 必須在資料庫中設定
+        if general_emojis and general_probability is not None and random.random() < general_probability:
             return random.choice(general_emojis)
         
         # 如果都沒有，嘗試使用伺服器自訂 emoji
         if guild and hasattr(guild, 'emojis'):
             server_emojis = list(guild.emojis)
-            if server_emojis and random.random() < 0.2:  # 20% 機率使用伺服器 emoji
+            server_probability = emoji_config.get('server_probability')  # 必須在資料庫中設定
+            if server_emojis and server_probability is not None and random.random() < server_probability:
                 return str(random.choice(server_emojis))
         
         return None
