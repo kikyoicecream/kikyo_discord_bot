@@ -57,7 +57,7 @@ class MemoryManager:
             return None
     
     async def save_character_user_memory(self, character_id: str, user_id: str, content: str, user_name: str = "使用者"):
-        """保存角色與使用者的對話記憶（簡化版本 - 所有用戶記憶存在單一文件）"""
+        """保存角色與使用者的對話記憶（簡化版本 - 所有使用者記憶存在單一文件）"""
         if not self.db:
             print("❌ Firestore 資料庫連接失敗，無法保存記憶")
             return False
@@ -68,7 +68,7 @@ class MemoryManager:
             # 使用 Gemini API 整理和摘要記憶
             summarized_memory = await self._summarize_memory_with_gemini(content, user_name, character_id)
             
-            # 使用新的簡化路徑結構：/{character_id}/users/（單一文件包含所有用戶）
+            # 使用新的簡化路徑結構：/{character_id}/users/（單一文件包含所有使用者）
             doc_ref = self.db.collection(character_id).document('users')
             
             # 獲取現有記憶文件
@@ -78,9 +78,9 @@ class MemoryManager:
                 all_users_memories = data if data else {}
             else:
                 all_users_memories = {}
-                print(f"🆕 為角色 {character_id} 創建新的用戶記憶文檔")
+                print(f"🆕 為角色 {character_id} 創建新的使用者記憶文檔")
             
-            # 獲取該用戶的記憶陣列
+            # 獲取該使用者的記憶陣列
             user_memories = all_users_memories.get(user_id, [])
             
             # 將摘要內容添加到記憶陣列中
@@ -88,18 +88,18 @@ class MemoryManager:
             
             # 當記憶超過15則時，統整成一則摘要
             if len(user_memories) > 15:
-                print(f"📋 用戶 {user_id} 記憶超過15則，正在統整記憶……")
+                print(f"📋 使用者 {user_id} 記憶超過15則，正在統整記憶……")
                 consolidated_memory = await self._consolidate_memories_with_gemini(user_memories, user_name)
                 user_memories = [consolidated_memory]  # 只保留統整後的記憶
                 print(f"✅ 記憶已統整完成")
             
-            # 更新該用戶的記憶
+            # 更新該使用者的記憶
             all_users_memories[user_id] = user_memories
             
             # 保存到 Firestore - 單一文件格式
             doc_ref.set(all_users_memories)
             
-            print(f"✅ 記憶保存成功：用戶 {user_id} 現有 {len(user_memories)} 則記憶")
+            print(f"✅ 記憶保存成功：使用者 {user_id} 現有 {len(user_memories)} 則記憶")
             return True
             
         except Exception as e:
@@ -119,7 +119,7 @@ class MemoryManager:
             if doc.exists:
                 data = doc.to_dict()
                 if data and user_id in data:
-                    user_memories = data[user_id]  # 取得該用戶的記憶陣列
+                    user_memories = data[user_id]  # 取得該使用者的記憶陣列
                     
                     # 返回最近的記憶（根據限制）
                     if len(user_memories) <= limit:
@@ -127,9 +127,9 @@ class MemoryManager:
                     else:
                         return user_memories[-limit:]  # 返回最後 limit 則記憶
                 else:
-                    return []  # 該用戶沒有記憶
+                    return []  # 該使用者沒有記憶
             else:
-                return []  # 該角色沒有任何用戶記憶
+                return []  # 該角色沒有任何使用者記憶
                 
         except Exception as e:
             print(f"獲取記憶時發生錯誤：{e}")
