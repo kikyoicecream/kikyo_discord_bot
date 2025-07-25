@@ -57,7 +57,7 @@ class MemoryManager:
             return None
     
     async def save_character_user_memory(self, character_id: str, user_id: str, content: str, user_name: str = "使用者"):
-        """保存角色與使用者的對話記憶（分離永久記憶和動態記憶）"""
+        """保存角色與使用者的對話記憶（簡化版本 - 所有用戶記憶存在單一文件）"""
         if not self.db:
             print("❌ Firestore 資料庫連接失敗，無法保存記憶")
             return False
@@ -68,38 +68,38 @@ class MemoryManager:
             # 使用 Gemini API 整理和摘要記憶
             summarized_memory = await self._summarize_memory_with_gemini(content, user_name, character_id)
             
-            # 使用新的路徑結構：/character_id/users/memories/user_id
-            doc_ref = self.db.collection(character_id).document('users').collection('memories').document(user_id)
+            # 使用新的簡化路徑結構：/{character_id}/users/（單一文件包含所有用戶）
+            doc_ref = self.db.collection(character_id).document('users')
             
-            # 獲取現有記憶
+            # 獲取現有記憶文件
             doc = doc_ref.get()  # type: ignore
             if doc.exists:
                 data = doc.to_dict()
-                permanent_memories = data.get('permanent_memories', []) if data else []  # 永久記憶
-                dynamic_memories = data.get('dynamic_memories', []) if data else []      # 動態記憶
+                all_users_memories = data if data else {}
             else:
-                permanent_memories = []
-                dynamic_memories = []
-                print(f"🆕 為使用者 {user_id} 創建新的記憶文檔")
+                all_users_memories = {}
+                print(f"🆕 為角色 {character_id} 創建新的用戶記憶文檔")
             
-            # 將摘要內容添加到動態記憶陣列中
-            dynamic_memories.append(summarized_memory)
+            # 獲取該用戶的記憶陣列
+            user_memories = all_users_memories.get(user_id, [])
             
-            # 當動態記憶超過15則時，統整成一則摘要（永久記憶不受影響）
-            if len(dynamic_memories) > 15:
-                print(f"📋 動態記憶超過15則，正在統整記憶……")
-                consolidated_memory = await self._consolidate_memories_with_gemini(dynamic_memories, user_name)
-                dynamic_memories = [consolidated_memory]  # 只保留統整後的記憶
-                print(f"✅ 動態記憶已統整完成，現在只有1則統整記憶")
+            # 將摘要內容添加到記憶陣列中
+            user_memories.append(summarized_memory)
             
-            # 保存到 Firestore - 分離格式
-            doc_ref.set({
-                'last_updated': datetime.now(),
-                'permanent_memories': permanent_memories,  # 永久記憶（手動添加）
-                'dynamic_memories': dynamic_memories       # 動態記憶（自動生成）
-            })
+            # 當記憶超過15則時，統整成一則摘要
+            if len(user_memories) > 15:
+                print(f"📋 用戶 {user_id} 記憶超過15則，正在統整記憶……")
+                consolidated_memory = await self._consolidate_memories_with_gemini(user_memories, user_name)
+                user_memories = [consolidated_memory]  # 只保留統整後的記憶
+                print(f"✅ 記憶已統整完成")
             
-            print(f"✅ 記憶保存成功：{len(permanent_memories)} 則永久記憶 + {len(dynamic_memories)} 則動態記憶")
+            # 更新該用戶的記憶
+            all_users_memories[user_id] = user_memories
+            
+            # 保存到 Firestore - 單一文件格式
+            doc_ref.set(all_users_memories)
+            
+            print(f"✅ 記憶保存成功：用戶 {user_id} 現有 {len(user_memories)} 則記憶")
             return True
             
         except Exception as e:
@@ -107,39 +107,29 @@ class MemoryManager:
             return False
 
     def get_character_user_memory(self, character_id: str, user_id: str, limit: int = 25) -> List[str]:
-        """獲取角色與使用者的對話記憶（包含永久記憶和動態記憶）"""
+        """獲取角色與使用者的對話記憶（簡化版本 - 從單一文件中獲取）"""
         if not self.db:
             return []
             
         try:
-            # 使用新的路徑結構：/character_id/users/memories/user_id
-            doc_ref = self.db.collection(character_id).document('users').collection('memories').document(user_id)
+            # 使用新的簡化路徑結構：/{character_id}/users/
+            doc_ref = self.db.collection(character_id).document('users')
             doc = doc_ref.get()  # type: ignore
             
             if doc.exists:
                 data = doc.to_dict()
-                
-                # 獲取永久記憶（永遠保留）
-                permanent_memories = data.get('permanent_memories', []) if data else []
-                
-                # 獲取動態記憶（可能被統整）
-                dynamic_memories = data.get('dynamic_memories', []) if data else []
-                
-                # 合併記憶：永久記憶在前，動態記憶在後
-                all_memories = permanent_memories + dynamic_memories
-                
-                # 返回最近的記憶（但確保永久記憶永遠包含）
-                if len(all_memories) <= limit:
-                    return all_memories
-                else:
-                    # 如果超過限制，優先保留所有永久記憶，然後是最近的動態記憶
-                    if len(permanent_memories) >= limit:
-                        return permanent_memories[:limit]
+                if data and user_id in data:
+                    user_memories = data[user_id]  # 取得該用戶的記憶陣列
+                    
+                    # 返回最近的記憶（根據限制）
+                    if len(user_memories) <= limit:
+                        return user_memories
                     else:
-                        remaining_slots = limit - len(permanent_memories)
-                        return permanent_memories + dynamic_memories[-remaining_slots:]
+                        return user_memories[-limit:]  # 返回最後 limit 則記憶
+                else:
+                    return []  # 該用戶沒有記憶
             else:
-                return []
+                return []  # 該角色沒有任何用戶記憶
                 
         except Exception as e:
             print(f"獲取記憶時發生錯誤：{e}")
@@ -284,7 +274,7 @@ Always place all character dialogue inside full-width quotation marks「」. Con
 ## 群組對話情況
 {group_context if group_context else f"- 當前與我對話的使用者: {user_display_name}"}
 
-## 關於 {user_display_name} 的長期記憶
+## 關於 {user_display_name} 的記憶
 {memory_context}
 
 ## 目前輸入
