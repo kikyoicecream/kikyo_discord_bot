@@ -5,8 +5,11 @@ import os
 import sys
 import time
 import asyncio
+import json
 from dotenv import load_dotenv
 load_dotenv()
+from google.cloud import firestore
+from google.oauth2 import service_account
 from core.character_registry_custom import CharacterRegistry
 from core import memory
 from core.emoji_responses import smart_emoji_manager
@@ -28,6 +31,9 @@ class CharacterBot:
         self.character_registry.register_character(self.character_id)
         self.character_name = self._get_character_name()
 
+        # 初始化 Firestore 連接
+        self.db = self._init_firestore()
+
         # --- 修正 #1: 統一使用 commands.Bot ---
         # 直接將 self.client 初始化為 commands.Bot，它包含了所有需要的功能，包括 .tree
         intents = discord.Intents.default()
@@ -42,12 +48,29 @@ class CharacterBot:
         # 載入環境變數
         self.token = os.getenv(token_env_var)
         
-        # 權限設定 - 支援個別角色權限
-        self.allowed_guild_ids = self._get_character_permission("ALLOWED_GUILDS")
-        self.allowed_channel_ids = self._get_character_permission("ALLOWED_CHANNELS")
+        # 權限設定 - 從 Firestore 讀取
+        self.allowed_guild_ids = self._get_character_permission_from_firestore("allowed_guilds")
+        self.allowed_channel_ids = self._get_character_permission_from_firestore("allowed_channels")
         
         # 設定事件處理器和指令
         self._setup_events_and_commands()
+    
+    def _init_firestore(self):
+        """初始化 Firestore 連接"""
+        try:
+            firebase_credentials = os.getenv("FIREBASE_CREDENTIALS_JSON")
+            if not firebase_credentials:
+                print("❌ 未找到 FIREBASE_CREDENTIALS_JSON 環境變數")
+                return None
+                
+            credentials_dict = json.loads(firebase_credentials)
+            credentials = service_account.Credentials.from_service_account_info(credentials_dict)
+            
+            db = firestore.Client(credentials=credentials, project=credentials_dict['project_id'])
+            return db
+        except Exception as e:
+            print(f"❌ Firestore 連接失敗：{e}")
+            return None
         
     def _get_character_name(self):
         """取得角色名稱"""
@@ -198,16 +221,30 @@ class CharacterBot:
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
         
-    def _get_character_permission(self, permission_type: str) -> List[int]:
-        """取得角色專屬權限設定，如果沒有則使用全域設定"""
-        character_specific_key = f"{self.character_id.upper()}_" + permission_type
-        character_specific_value = os.getenv(character_specific_key, "")
+    def _get_character_permission_from_firestore(self, permission_field: str) -> List[int]:
+        """從 Firestore 取得角色權限設定"""
+        if not self.db:
+            print(f"❌ Firestore 未連接，無法讀取 {self.character_id} 的權限設定")
+            return []
         
-        if character_specific_value.strip():
-            return [int(x) for x in character_specific_value.split(",") if x.strip().isdigit()]
-        else:
-            global_value = os.getenv(permission_type, "")
-            return [int(x) for x in global_value.split(",") if x.strip().isdigit()]
+        try:
+            # 從 Firestore 讀取系統配置
+            system_ref = self.db.collection(self.character_id).document('system')
+            system_doc = system_ref.get()
+            
+            if system_doc.exists:
+                system_config = system_doc.to_dict()
+                firestore_permissions = system_config.get(permission_field, [])
+                
+                # 確保所有值都是整數
+                return [int(x) for x in firestore_permissions if isinstance(x, (int, str)) and str(x).isdigit()]
+            else:
+                print(f"❌ 找不到 {self.character_id} 的系統配置")
+                return []
+                
+        except Exception as e:
+            print(f"❌ 從 Firestore 讀取 {self.character_id} 權限失敗：{e}")
+            return []
         
     def run(self):
         """運行 Bot"""
