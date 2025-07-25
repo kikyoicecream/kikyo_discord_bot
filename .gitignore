@@ -40,3 +40,6 @@ emoji_system/
 
 # 角色配置檔案（已遷移到Firestore）
 characters.json
+
+# 環境變數範例檔案（配置已遷移到Firestore）
+env.example.txt
