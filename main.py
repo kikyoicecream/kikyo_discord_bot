@@ -12,6 +12,8 @@ import threading
 import json
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv
+from google.cloud import firestore
+from google.oauth2 import service_account
 from core.character_bot import run_character_bot_with_restart
 
 # 載入環境變數
@@ -24,48 +26,106 @@ class MultiBotLauncher:
     """多 Bot 啟動器"""
     
     def __init__(self):
-        self.bots = self.load_characters_from_json()
+        self.db = self._init_firestore()
+        self.bots = self.load_characters_from_firestore()
         self.running = False
     
-    def load_characters_from_json(self):
-        """從 characters.json 載入角色設定"""
+    def _init_firestore(self):
+        """初始化 Firestore 連接"""
         try:
-            with open('characters.json', 'r', encoding='utf-8') as f:
-                characters_data = json.load(f)
+            firebase_credentials = os.getenv("FIREBASE_CREDENTIALS_JSON")
+            if not firebase_credentials:
+                print("❌ 未找到 FIREBASE_CREDENTIALS_JSON 環境變數")
+                return None
+                
+            credentials_dict = json.loads(firebase_credentials)
+            credentials = service_account.Credentials.from_service_account_info(credentials_dict)
             
+            db = firestore.Client(credentials=credentials, project=credentials_dict['project_id'])
+            print("✅ Firestore 連接成功")
+            return db
+        except Exception as e:
+            print(f"❌ Firestore 連接失敗：{e}")
+            return None
+    
+    def load_characters_from_firestore(self):
+        """從 Firestore 載入角色設定"""
+        if not self.db:
+            print("❌ Firestore 未連接，無法載入角色設定")
+            return []
+        
+        try:
+            character_ids = ["shen_ze", "gu_beichen", "fan_chengxi"]  # 可以改為動態獲取
             bots = []
-            for character_id, character_info in characters_data.items():
-                if character_info.get('enabled', True):  # 只載入啟用的角色
-                    bots.append({
-                        'name': character_info.get('name', character_id),
-                        'character_id': character_id,
-                        'token_env': character_info['token_env'],
-                        'process': None,
-                        'enabled': True
-                    })
             
-            print(f"✅ 從 characters.json 載入了 {len(bots)} 個角色")
+            for character_id in character_ids:
+                try:
+                    # 從 Firestore 讀取系統配置
+                    system_ref = self.db.collection(character_id).document('system')
+                    system_doc = system_ref.get()
+                    
+                    if system_doc.exists:
+                        system_config = system_doc.to_dict()
+                        
+                        if system_config.get('enabled', True):  # 只載入啟用的角色
+                            bots.append({
+                                'name': system_config.get('name', character_id),
+                                'character_id': character_id,
+                                'token_env': system_config.get('token_env', ''),
+                                'process': None,
+                                'enabled': True
+                            })
+                            print(f"✅ 載入角色：{system_config.get('name', character_id)}")
+                        else:
+                            print(f"⚠️ 角色 {character_id} 已停用，跳過載入")
+                    else:
+                        print(f"⚠️ 找不到角色 {character_id} 的系統配置")
+                        
+                except Exception as e:
+                    print(f"❌ 載入角色 {character_id} 失敗：{e}")
+                    continue
+            
+            print(f"✅ 從 Firestore 載入了 {len(bots)} 個角色")
             return bots
             
-        except FileNotFoundError:
-            print("❌ 找不到 characters.json 檔案")
-            return []
-        except json.JSONDecodeError as e:
-            print(f"❌ characters.json 格式錯誤: {e}")
-            return []
         except Exception as e:
-            print(f"❌ 載入角色設定失敗: {e}")
+            print(f"❌ 從 Firestore 載入角色設定失敗: {e}")
             return []
     
     def load_character_config(self, character_id: str) -> Optional[Dict[str, Any]]:
-        """載入角色配置"""
+        """從 Firestore 載入角色配置"""
+        if not self.db:
+            print(f"❌ Firestore 未連接，無法載入 {character_id} 配置")
+            return None
+            
         try:
-            config_path = 'characters.json'
-            with open(config_path, 'r', encoding='utf-8') as f:
-                configs = json.load(f)
-                return configs.get(character_id)
+            # 從 Firestore 讀取系統配置
+            system_ref = self.db.collection(character_id).document('system')
+            system_doc = system_ref.get()
+            
+            if system_doc.exists:
+                system_config = system_doc.to_dict()
+                
+                # 轉換為舊格式以保持相容性
+                config = {
+                    'name': system_config.get('name', character_id),
+                    'token_env': system_config.get('token_env', ''),
+                    'proactive_keywords': system_config.get('proactive_keywords', []),
+                    'enabled': system_config.get('enabled', True),
+                    'gemini_config': {
+                        'temperature': system_config.get('temperature', 1.0),
+                        'top_k': system_config.get('top_k', 40),
+                        'top_p': system_config.get('top_p', 0.9)
+                    }
+                }
+                
+                return config
+            else:
+                print(f"❌ 找不到角色 {character_id} 的系統配置")
+                return None
+                
         except Exception as e:
-            print(f"❌ 載入角色配置失敗: {e}")
+            print(f"❌ 從 Firestore 載入角色配置失敗: {e}")
             return None
     
     def check_tokens(self):

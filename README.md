@@ -56,7 +56,6 @@
 - **功能**：顯示角色與使用者的記憶內容
 - **範例**：`/shen_ze_memories`、`/gu_beichen_memories`
 
-
 ## 環境需求
 
 - **Python 3.9+**
