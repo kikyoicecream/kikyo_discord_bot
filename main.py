@@ -47,6 +47,35 @@ class MultiBotLauncher:
             print(f"❌ Firestore 連接失敗：{e}")
             return None
     
+    def _get_all_character_ids(self):
+        """動態獲取所有角色集合 ID"""
+        if not self.db:
+            print("❌ Firestore 未連接，無法獲取角色列表")
+            return []
+        
+        # 排除的集合名稱（範本、測試等）
+        excluded_collections = ["template"]
+        
+        try:
+            # 獲取所有頂層集合
+            collections = self.db.collections()
+            character_ids = []
+            
+            for collection in collections:
+                collection_id = collection.id
+                
+                # 檢查是否為角色集合（有 system 文件）
+                system_ref = self.db.collection(collection_id).document('system')
+                system_doc = system_ref.get()
+                
+                if system_doc.exists:
+                    character_ids.append(collection_id)
+            return character_ids
+            
+        except Exception as e:
+            print(f"❌ 獲取角色集合失敗：{e}")
+            return []
+    
     def load_characters_from_firestore(self):
         """從 Firestore 載入角色設定"""
         if not self.db:
@@ -54,7 +83,8 @@ class MultiBotLauncher:
             return []
         
         try:
-            character_ids = ["shen_ze", "gu_beichen", "fan_chengxi"]  # 可以改為動態獲取
+            # 動態獲取所有角色集合
+            character_ids = self._get_all_character_ids()
             bots = []
             
             for character_id in character_ids:
@@ -74,17 +104,12 @@ class MultiBotLauncher:
                                 'process': None,
                                 'enabled': True
                             })
-                            print(f"✅ 載入角色：{system_config.get('name', character_id)}")
-                        else:
-                            print(f"⚠️ 角色 {character_id} 已停用，跳過載入")
-                    else:
-                        print(f"⚠️ 找不到角色 {character_id} 的系統配置")
-                        
                 except Exception as e:
                     print(f"❌ 載入角色 {character_id} 失敗：{e}")
                     continue
             
-            print(f"✅ 從 Firestore 載入了 {len(bots)} 個角色")
+            if bots:
+                print(f"✅ 載入 {len(bots)} 個角色")
             return bots
             
         except Exception as e:
@@ -129,14 +154,10 @@ class MultiBotLauncher:
     
     def check_tokens(self):
         """檢查必要的 Token 是否存在"""
-        print("🔍 檢查 Discord Token……")
-        
         for bot in self.bots:
             if bot['enabled']:
                 token = os.getenv(bot['token_env'])
-                if token:
-                    print(f"✅ {bot['name']} Token 已設定")
-                else:
+                if not token:
                     print(f"❌ {bot['name']} Token 未設定 ({bot['token_env']})")
                     bot['enabled'] = False
         
@@ -159,10 +180,6 @@ class MultiBotLauncher:
                     
                     if config:
                         gemini_config = config.get('gemini_config', {})
-                        print(f"🌡️ Temperature: {gemini_config.get('temperature', 'N/A')}")
-                        print(f"🎯 Top-K: {gemini_config.get('top_k', 'N/A')}")
-                        print(f"📊 Top-P: {gemini_config.get('top_p', 'N/A')}")
-                        print("=" * 50)
                         
                         # 直接調用 Bot 啟動函數
                         run_character_bot_with_restart(
