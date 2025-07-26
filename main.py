@@ -182,7 +182,6 @@ class MultiBotLauncher:
         def run_bot():
             while self.running:
                 try:
-                    print(f"🚀 啟動 {bot_info['name']} Bot……")
                     
                     # 載入角色配置
                     config = self.load_character_config(bot_info['character_id'])
@@ -218,7 +217,6 @@ class MultiBotLauncher:
         enabled_bots = [bot for bot in self.bots if bot['enabled']]
         
         print(f"\n🎭 啟動 {len(enabled_bots)} 個角色 Bot……")
-        print("=" * 50)
         
         threads = []
         for bot in enabled_bots:
@@ -231,12 +229,11 @@ class MultiBotLauncher:
             for thread in threads:
                 thread.join()
         except KeyboardInterrupt:
-            print("\n⏹️ 正在停止所有 Bot……")
             self.stop_all_bots()
     
     def stop_all_bots(self):
         """停止所有 Bot"""
-        print("🛑 正在停止所有 Bot……")
+        print("\n🛑 正在停止所有 Bot……")
         self.running = False
     
     def show_status(self):
@@ -255,9 +252,6 @@ class MultiBotLauncher:
 
 def main():
     """主程序"""
-    print("🎭 多角色 Discord Bot 啟動器")
-    print("=" * 50)
-    
     launcher = MultiBotLauncher()
     launcher.start_all_bots()
 
