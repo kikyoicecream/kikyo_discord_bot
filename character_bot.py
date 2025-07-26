@@ -48,13 +48,14 @@ class CharacterBot:
         # 載入環境變數
         self.token = os.getenv(token_env_var)
         
-        # 權限設定 - 從 Firestore 讀取
+        # 權限設定 - 從 Firestore 讀取（使用字串處理 Discord ID）
         self.allowed_guild_ids = self._get_character_permission_from_firestore("allowed_guilds")
         self.allowed_channel_ids = self._get_character_permission_from_firestore("allowed_channels")
         
-        # 如果沒有設定權限，預設為不允許發言（安全預設值）
-        if not self.allowed_guild_ids and not self.allowed_channel_ids:
-            print(f"⚠️ {self.character_id} 沒有設定伺服器或頻道權限，預設為不允許發言")
+        # 顯示最終權限設定
+        print(f"🔐 {self.character_id} 最終權限設定：")
+        print(f"   - 允許伺服器：{self.allowed_guild_ids}")
+        print(f"   - 允許頻道：{self.allowed_channel_ids}")
         
         # 設定事件處理器和指令
         self._setup_events_and_commands()
@@ -116,20 +117,15 @@ class CharacterBot:
             if message.author == self.client.user:
                 return
             
-            # 權限檢查 - 修正邏輯
-            # 如果有設定伺服器權限，檢查伺服器是否在允許清單中
-            if self.allowed_guild_ids:
-                if not message.guild or message.guild.id not in self.allowed_guild_ids:
-                    return
-            
-            # 如果有設定頻道權限，檢查頻道是否在允許清單中
-            if self.allowed_channel_ids:
-                if message.channel.id not in self.allowed_channel_ids:
-                    return
-            
-            # 如果都沒有設定權限，預設不允許發言（安全預設值）
-            if not self.allowed_guild_ids and not self.allowed_channel_ids:
+            # 權限檢查... (使用字串比較)
+            if self.allowed_channel_ids and str(message.channel.id) not in self.allowed_channel_ids:
+                print(f"🚫 {self.character_id} 頻道權限檢查失敗：{message.channel.id} 不在 {self.allowed_channel_ids} 中")
                 return
+            if self.allowed_guild_ids and message.guild and str(message.guild.id) not in self.allowed_guild_ids:
+                print(f"🚫 {self.character_id} 伺服器權限檢查失敗：{message.guild.id} 不在 {self.allowed_guild_ids} 中")
+                return
+            
+            print(f"✅ {self.character_id} 權限檢查通過：伺服器={message.guild.id if message.guild else 'None'}, 頻道={message.channel.id}")
             
             # 檢查表情符號回應
             emoji_response = await self._check_emoji_response(message)
@@ -253,8 +249,8 @@ class CharacterBot:
                     ephemeral=True
                 )
         
-    def _get_character_permission_from_firestore(self, permission_field: str) -> List[int]:
-        """從 Firestore 取得角色權限設定"""
+    def _get_character_permission_from_firestore(self, permission_field: str) -> List[str]:
+        """從 Firestore 取得角色權限設定（使用字串處理 Discord ID）"""
         if not self.db:
             print(f"❌ Firestore 未連接，無法讀取 {self.character_id} 的權限設定")
             return []
@@ -268,8 +264,21 @@ class CharacterBot:
                 system_config = system_doc.to_dict()
                 firestore_permissions = system_config.get(permission_field, [])
                 
-                # 確保所有值都是整數
-                return [int(x) for x in firestore_permissions if isinstance(x, (int, str)) and str(x).isdigit()]
+                # 將所有 Discord ID 轉換為字串，避免數字精度問題
+                processed_permissions = []
+                for x in firestore_permissions:
+                    if isinstance(x, str):
+                        # 如果是字串，直接使用
+                        if x.isdigit():
+                            processed_permissions.append(x)
+                    elif isinstance(x, (int, float)):
+                        # 如果是數字，轉換為字串
+                        processed_permissions.append(str(int(x)))
+                
+                print(f"🔍 {self.character_id} {permission_field} 原始資料：{firestore_permissions}")
+                print(f"🔍 {self.character_id} {permission_field} 處理後（字串）：{processed_permissions}")
+                
+                return processed_permissions
             else:
                 print(f"❌ 找不到 {self.character_id} 的系統配置")
                 return []
