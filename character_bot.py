@@ -52,6 +52,10 @@ class CharacterBot:
         self.allowed_guild_ids = self._get_character_permission_from_firestore("allowed_guilds")
         self.allowed_channel_ids = self._get_character_permission_from_firestore("allowed_channels")
         
+        # 如果沒有設定權限，預設為不允許發言（安全預設值）
+        if not self.allowed_guild_ids and not self.allowed_channel_ids:
+            print(f"⚠️ {self.character_id} 沒有設定伺服器或頻道權限，預設為不允許發言")
+        
         # 設定事件處理器和指令
         self._setup_events_and_commands()
     
@@ -112,10 +116,19 @@ class CharacterBot:
             if message.author == self.client.user:
                 return
             
-            # 權限檢查... (您的原始邏輯)
-            if self.allowed_channel_ids and message.channel.id not in self.allowed_channel_ids:
-                return
-            if self.allowed_guild_ids and message.guild and message.guild.id not in self.allowed_guild_ids:
+            # 權限檢查 - 修正邏輯
+            # 如果有設定伺服器權限，檢查伺服器是否在允許清單中
+            if self.allowed_guild_ids:
+                if not message.guild or message.guild.id not in self.allowed_guild_ids:
+                    return
+            
+            # 如果有設定頻道權限，檢查頻道是否在允許清單中
+            if self.allowed_channel_ids:
+                if message.channel.id not in self.allowed_channel_ids:
+                    return
+            
+            # 如果都沒有設定權限，預設不允許發言（安全預設值）
+            if not self.allowed_guild_ids and not self.allowed_channel_ids:
                 return
             
             # 檢查表情符號回應
