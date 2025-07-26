@@ -213,6 +213,33 @@ class CharacterBot:
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
         
+        @self.client.tree.command(name=f"{character_prefix}_intro", description=f"顯示 {self.character_name} 的角色簡介")
+        async def character_intro(interaction: discord.Interaction):
+            # 從 Firestore 讀取角色簡介
+            try:
+                system_ref = self.db.collection(self.character_id).document('system')
+                system_doc = system_ref.get()
+                
+                if system_doc.exists:
+                    system_config = system_doc.to_dict()
+                    intro_text = system_config.get('intro', '暫無角色簡介')
+                else:
+                    intro_text = '❌ 找不到系統配置'
+                
+                embed = discord.Embed(
+                    title=f"👤 {self.character_name} 角色簡介",
+                    description=intro_text,
+                    color=discord.Color.blue()
+                )
+                
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                
+            except Exception as e:
+                await interaction.response.send_message(
+                    f"❌ 讀取角色簡介時發生錯誤：{str(e)}", 
+                    ephemeral=True
+                )
+        
     def _get_character_permission_from_firestore(self, permission_field: str) -> List[int]:
         """從 Firestore 取得角色權限設定"""
         if not self.db:
