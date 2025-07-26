@@ -57,7 +57,15 @@ your-project/
 │       ├── enabled: true
 │       ├── allowed_guilds: []
 │       ├── allowed_channels: []
-│       └── intro: "角色簡介文字"
+│       ├── intro: "角色簡介文字"
+│       └── gemini_config: {   # Gemini AI 模型配置
+│           ├── model: "gemini-2.5-pro"
+│           ├── temperature: 1.0
+│           ├── top_k: 40
+│           ├── top_p: 0.9
+│           ├── max_output_tokens: 2048
+│           └── safety_settings: {}
+│       }
 ```
 
 ## 🧠 記憶系統

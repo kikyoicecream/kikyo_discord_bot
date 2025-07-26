@@ -145,11 +145,14 @@ class MultiBotLauncher:
                     'token_env': system_config.get('token_env', ''),
                     'proactive_keywords': system_config.get('proactive_keywords', []),
                     'enabled': system_config.get('enabled', True),
-                    'gemini_config': {
+                    'gemini_config': system_config.get('gemini_config', {
                         'temperature': system_config.get('temperature', 1.0),
                         'top_k': system_config.get('top_k', 40),
-                        'top_p': system_config.get('top_p', 0.9)
-                    }
+                        'top_p': system_config.get('top_p', 0.9),
+                        'model': 'gemini-2.5-pro',
+                        'max_output_tokens': 2048,
+                        'safety_settings': {}
+                    })
                 }
                 
                 return config

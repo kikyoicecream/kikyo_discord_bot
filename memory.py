@@ -243,14 +243,27 @@ async def generate_character_response(character_name: str, character_persona: st
         # 設定 Gemini 參數
         generation_config = {}
         if gemini_config:
+            # 基本參數
             if 'temperature' in gemini_config:
                 generation_config['temperature'] = gemini_config['temperature']
             if 'top_k' in gemini_config:
                 generation_config['top_k'] = gemini_config['top_k']
             if 'top_p' in gemini_config:
                 generation_config['top_p'] = gemini_config['top_p']
+            
+            # 新增的進階參數
+            if 'max_output_tokens' in gemini_config:
+                generation_config['max_output_tokens'] = gemini_config['max_output_tokens']
         
-        model = genai.GenerativeModel('gemini-2.5-pro', generation_config=generation_config, safety_settings=SAFETY_SETTINGS)  # type: ignore
+        # 安全設定
+        safety_settings = SAFETY_SETTINGS  # 預設安全設定
+        if gemini_config and 'safety_settings' in gemini_config and gemini_config['safety_settings']:
+            safety_settings = gemini_config['safety_settings']
+        
+        # 模型選擇
+        model_name = gemini_config.get('model', 'gemini-2.5-pro') if gemini_config else 'gemini-2.5-pro'
+        
+        model = genai.GenerativeModel(model_name, generation_config=generation_config, safety_settings=safety_settings)  # type: ignore
         
         # 建構記憶內容
         memory_context = ""
