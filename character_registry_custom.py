@@ -23,7 +23,6 @@ class CharacterRegistry:
             # 檢查是否已經初始化過
             if firebase_admin._apps:
                 self.db = firestore.client()
-                print("Firebase 已初始化，重用現有連接")
                 return
                 
             firebase_creds_json = os.getenv('FIREBASE_CREDENTIALS_JSON')
@@ -32,7 +31,6 @@ class CharacterRegistry:
                 cred = firebase_admin.credentials.Certificate(firebase_creds_dict)
                 firebase_admin.initialize_app(cred)
                 self.db = firestore.client()
-                print("Firebase 初始化成功")
             else:
                 print("錯誤：找不到 FIREBASE_CREDENTIALS_JSON")
         except Exception as e:
@@ -40,7 +38,6 @@ class CharacterRegistry:
             # 如果初始化失敗，嘗試使用現有的連接
             try:
                 self.db = firestore.client()
-                print("使用現有的 Firebase 連接")
             except:
                 self.db = None
     
@@ -59,9 +56,6 @@ class CharacterRegistry:
                 character_data = doc.to_dict()
                 if character_data:  # 確保不是 None
                     self.characters[character_id] = character_data
-                    # 除錯：顯示載入的角色名稱
-                    name = character_data.get('name', '未設定')
-                    print(f"✅ 從 Firestore 載入角色：{name}")
                     return True
                 else:
                     print(f"角色 {character_id} 的設定資料為空")

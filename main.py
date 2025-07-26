@@ -10,11 +10,16 @@ import os
 import time
 import threading
 import json
+import logging
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv
 from google.cloud import firestore
 from google.oauth2 import service_account
 from character_bot import run_character_bot_with_restart
+
+# 設定 Discord 日誌級別，減少詳細訊息
+logging.getLogger('discord.client').setLevel(logging.WARNING)
+logging.getLogger('discord.gateway').setLevel(logging.WARNING)
 
 # 載入環境變數
 load_dotenv()
@@ -64,6 +69,10 @@ class MultiBotLauncher:
             for collection in collections:
                 collection_id = collection.id
                 
+                # 檢查是否在排除清單中
+                if collection_id in excluded_collections:
+                    continue
+                
                 # 檢查是否為角色集合（有 system 文件）
                 system_ref = self.db.collection(collection_id).document('system')
                 system_doc = system_ref.get()
@@ -97,19 +106,19 @@ class MultiBotLauncher:
                         system_config = system_doc.to_dict()
                         
                         if system_config.get('enabled', True):  # 只載入啟用的角色
+                            character_name = system_config.get('name', character_id)
                             bots.append({
-                                'name': system_config.get('name', character_id),
+                                'name': character_name,
                                 'character_id': character_id,
                                 'token_env': system_config.get('token_env', ''),
                                 'process': None,
                                 'enabled': True
                             })
+                            print(f"✅ 已從 Firestore 載入角色：{character_name}")
                 except Exception as e:
                     print(f"❌ 載入角色 {character_id} 失敗：{e}")
                     continue
             
-            if bots:
-                print(f"✅ 載入 {len(bots)} 個角色")
             return bots
             
         except Exception as e:

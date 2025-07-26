@@ -91,15 +91,7 @@ class CharacterBot:
         @self.client.event
         async def on_ready():
             print(f'🤖 {self.character_id} Bot 已成功登入為 {self.client.user}')
-            
-            # 角色已在初始化時註冊，這裡只需要確認
-            if self.character_id in self.character_registry.characters:
-                print(f"✅ 成功註冊角色：{self.character_name}")
-            else:
-                print(f"❌ 註冊角色失敗：{self.character_name}")
 
-            # --- 修正 #2: 在 on_ready 中自動同步指令 ---
-            # 這是讓斜線指令出現的關鍵步驟
             try:
                 synced = await self.client.tree.sync()
                 print(f"✅ {self.character_name} Bot 同步了 {len(synced)} 個指令")
@@ -262,11 +254,8 @@ class CharacterBot:
 # --- 啟動器部分保持不變 ---
 def run_character_bot_with_restart(character_id: str, token_env_var: str, proactive_keywords: Optional[List[str]] = None, gemini_config: Optional[dict] = None):
     """運行角色 Bot 並支援自動重啟"""
-    print(f"🚀 正在啟動 {character_id} Bot...")
-    
     try:
         while True:
-            print(f"--- 啟動 {character_id} Bot 主程序 ---")
             
             bot = CharacterBot(character_id, token_env_var, proactive_keywords, gemini_config)
             bot.run() # .run() 現在沒有回傳值了

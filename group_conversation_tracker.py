@@ -32,7 +32,6 @@ class GroupConversationTracker:
             credentials = service_account.Credentials.from_service_account_info(credentials_dict)
             
             db = firestore.Client(credentials=credentials, project=credentials_dict['project_id'])
-            print("✅ 群組對話追蹤器 Firestore 連接成功")
             return db
         except Exception as e:
             print(f"❌ 群組對話追蹤器 Firestore 連接失敗：{e}")
