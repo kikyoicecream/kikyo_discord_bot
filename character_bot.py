@@ -52,10 +52,10 @@ class CharacterBot:
         self.allowed_guild_ids = self._get_character_permission_from_firestore("allowed_guilds")
         self.allowed_channel_ids = self._get_character_permission_from_firestore("allowed_channels")
         
-        # 顯示最終權限設定
-        print(f"🔐 {self.character_id} 最終權限設定：")
-        print(f"   - 允許伺服器：{self.allowed_guild_ids}")
-        print(f"   - 允許頻道：{self.allowed_channel_ids}")
+        # 顯示簡化的權限設定
+        guild_count = len(self.allowed_guild_ids)
+        channel_count = len(self.allowed_channel_ids)
+        print(f"🔐 {self.character_id}: {guild_count}個伺服器, {channel_count}個頻道")
         
         # 設定事件處理器和指令
         self._setup_events_and_commands()
@@ -119,13 +119,9 @@ class CharacterBot:
             
             # 權限檢查... (使用字串比較)
             if self.allowed_channel_ids and str(message.channel.id) not in self.allowed_channel_ids:
-                print(f"🚫 {self.character_id} 頻道權限檢查失敗：{message.channel.id} 不在 {self.allowed_channel_ids} 中")
                 return
             if self.allowed_guild_ids and message.guild and str(message.guild.id) not in self.allowed_guild_ids:
-                print(f"🚫 {self.character_id} 伺服器權限檢查失敗：{message.guild.id} 不在 {self.allowed_guild_ids} 中")
                 return
-            
-            print(f"✅ {self.character_id} 權限檢查通過：伺服器={message.guild.id if message.guild else 'None'}, 頻道={message.channel.id}")
             
             # 檢查表情符號回應
             emoji_response = await self._check_emoji_response(message)
@@ -274,9 +270,6 @@ class CharacterBot:
                     elif isinstance(x, (int, float)):
                         # 如果是數字，轉換為字串
                         processed_permissions.append(str(int(x)))
-                
-                print(f"🔍 {self.character_id} {permission_field} 原始資料：{firestore_permissions}")
-                print(f"🔍 {self.character_id} {permission_field} 處理後（字串）：{processed_permissions}")
                 
                 return processed_permissions
             else:
