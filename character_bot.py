@@ -277,7 +277,6 @@ class CharacterBot:
         except Exception as e:
             print(f"❌ {self.character_name} Bot 運行時發生錯誤：{e}")
 
-
 # --- 啟動器部分保持不變 ---
 def run_character_bot_with_restart(character_id: str, token_env_var: str, proactive_keywords: Optional[List[str]] = None, gemini_config: Optional[dict] = None):
     """運行角色 Bot 並支援自動重啟"""
