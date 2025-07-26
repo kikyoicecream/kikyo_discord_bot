@@ -43,3 +43,5 @@ characters.json
 
 # 環境變數範例檔案（配置已遷移到Firestore）
 env.example.txt
+
+copy_collection_recursive.py
