@@ -3,7 +3,7 @@
 You are a memory organization assistant. Please organize the following memories about {user_name} into a summary.
 
 Organize the summary using the following format:
-1. Must be less than 300 characters long.
+1. Must be less than 400 characters long.
 2. Merge similar memories (e.g., repeated mentions of interests or relationships)
 3. Remove redundant information
 4. Keep important personal traits and events

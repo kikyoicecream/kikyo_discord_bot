@@ -1,6 +1,6 @@
 # Kikyo Discord BOT
 
-多角色 Discord Bot 系統，支援獨立的虛擬人物角色，每個角色都有專屬的 Discord Token 和記憶系統。具備 AI 群組對話追蹤功能，讓 BOT 能夠感知多使用者對話環境並自然地與所有參與者互動。
+多角色 Discord Bot 系統，支援獨立的虛擬人物角色，每個角色都有專屬的 AI 記憶系統。具備群組對話追蹤功能，讓 BOT 能夠感知多使用者對話環境並自然地與所有參與者互動。
 
 ## 🚀 快速開始
 
@@ -9,71 +9,121 @@
 ## 🎯 系統特色
 
 - 🎭 **多角色支援**：同時 Host 多個 BOT，模組化新增角色
-- 🧠 **Firestore 記憶系統**：使用 Firestore 儲存每個使用者的對話記憶
+- 🧠 **智慧記憶系統**：基於 AI 的記憶提取、統整與管理
+- 📝 **Prompt 模板系統**：模組化的 AI 提示詞管理，支援動態配置
 - 👥 **群組對話追蹤**：追蹤活躍使用者，支援多使用者群組對話
 - ✨ **表情符號回應**：依照使用者對話內容，觸發表情符號回應
-- 🔧 **雲端配置管理**：所有角色設定、權限、表情符號機率都儲存在 Firestore
+- 🔧 **統一雲端配置**：所有設定、參數、提示詞都儲存在 Firestore
 - 🚀 **自動重啟**：Bot 異常時自動重啟功能
 - 🔒 **安全過濾**：全域 Gemini AI 安全過濾器保護
-- 🎯 **斜線指令**：keyword、memory、restart、intro 四種斜線指令，每個 BOT 都有獨立的指令
-- ⚡ **簡化結構**：所有核心檔案都在根目錄，易於維護
+- 🎯 **斜線指令**：keyword、memory、restart、intro 四種斜線指令
+- ⚡ **統一架構**：Firebase 統一管理器，簡化代碼維護
 
 ## 📁 專案結構
 
 ```
 Kikyo Discord BOT/
-├── main.py                    # 主程式 - 多 Bot 啟動器
-├── character_bot.py           # 角色 Bot 核心邏輯
-├── character_registry_custom.py  # 角色註冊與設定管理
-├── emoji_responses.py         # 表情符號回應系統
-├── memory.py                  # Firestore 記憶管理
-├── group_conversation_tracker.py  # 群組對話追蹤
-├── requirements.txt           # Python 依賴套件
-├── README.md                  # 專案說明文件
-└── .gitignore                 # Git 忽略檔案設定
+├── main.py                         # 主程式 - 多 Bot 啟動器
+├── character_bot.py                # 角色 Bot 核心邏輯
+├── character_registry_custom.py    # 角色註冊與設定管理
+├── emoji_responses.py              # 表情符號回應系統
+├── memory.py                       # AI 記憶管理與回應生成
+├── group_conversation_tracker.py   # 群組對話追蹤
+├── firebase_utils.py               # Firebase 統一管理器 🆕
+├── requirements.txt                # Python 依賴套件
+├── README.md                       # 專案說明文件
+└── .env                            # 環境變數配置
 ```
 
 ## 🗄️ Firestore 資料庫結構
 
 ```
 your-project/
-├── {character_id}/
-│   ├── profile/               # 角色設定檔
-│   ├── users/                 # 使用者記憶（單一文件）
-│   │   └── {user_id}: []      # 使用者 ID 對應記憶陣列
-│   ├── emoji_system/          # 表情符號管理器
+├── prompt/                        # 🆕 AI 提示詞模板系統
+│   ├── user_memories/             # 記憶提取提示詞
+│   │   ├── content: "提示詞內容"
+│   │   └── model: "gemini-2.0-flash"
+│   ├── memories_summary/          # 記憶統整提示詞
+│   │   ├── content: "提示詞內容"
+│   │   ├── model: "gemini-2.0-flash"
+│   │   └── memory_limit: 15       # 🆕 記憶統整門檻
+│   └── system/                    # 系統角色提示詞
+│       ├── content: "提示詞內容"
+│       └── model: "gemini-2.5-pro"
+├── {character_id}/                # 角色設定
+│   ├── profile/                   # 角色設定檔
+│   ├── users/                     # 使用者記憶（單一文件）
+│   │   └── {user_id}: []          # 使用者 ID 對應記憶陣列
+│   ├── emoji_system/              # 表情符號管理器
 │   │   ├── general_emojis: []
 │   │   ├── trigger_emojis: {}
 │   │   ├── trigger_keywords: {}
 │   │   ├── general_probability: 0.3
 │   │   └── server_probability: 0.2
-│   └── system/                # 系統配置
-│       ├── name: "{character_id}"
+│   └── system/                    # 系統配置
+│       ├── name: "角色名稱"
 │       ├── token_env: "{CHARACTER_ID}_TOKEN"
 │       ├── proactive_keywords: []
-│       ├── temperature: 1.0
-│       ├── top_k: 40
-│       ├── top_p: 0.9
 │       ├── enabled: true
 │       ├── allowed_guilds: []
 │       ├── allowed_channels: []
 │       ├── intro: "角色簡介文字"
-│       └── gemini_config: {   # Gemini AI 模型配置
+│       └── gemini_config: {       # 🆕 統一 Gemini 配置
 │           ├── model: "gemini-2.5-pro"
 │           ├── temperature: 1.0
 │           ├── top_k: 40
 │           ├── top_p: 0.9
 │           ├── max_output_tokens: 2048
-│           └── safety_settings: {}
+│           └── enabled: true
 │       }
 ```
 
-## 🧠 記憶系統
+## 🧠 AI 記憶與提示詞系統
 
-- **自動記憶**：每次對話後自動使用 AI 提取重要資訊
-- **智慧統整**：動態記憶超過 15 則時，自動統整成摘要
-- **角色隔離**：每個角色的記憶完全獨立
-- **使用者隔離**：每個使用者的記憶分別儲存在單一文件中
+### 📝 Prompt 模板系統
+
+本系統採用模組化的 AI 提示詞管理，所有提示詞都儲存在 Firestore 的 `prompt` 集合中：
+
+#### **1. `user_memories` - 記憶提取提示詞**
+- **功能**：從用戶對話中提取重要資訊並生成結構化記憶
+- **使用時機**：每當用戶與角色對話後自動觸發
+- **可用變數**：`{character_name}`, `{user_name}`
+- **輸出**：簡潔的記憶條目（每條 < 40 字）
+
+#### **2. `memories_summary` - 記憶統整提示詞**
+- **功能**：當記憶條目過多時，將多條記憶整合成精簡摘要
+- **使用時機**：當用戶記憶數量超過 `memory_limit` 門檻時自動觸發
+- **可用變數**：`{user_name}`
+- **配置**：`memory_limit` - 記憶統整門檻（預設 15 條）
+- **輸出**：統整後的記憶摘要（< 300 字）
+
+#### **3. `system` - 系統角色提示詞**
+- **功能**：定義角色的行為模式、說話風格和回應邏輯
+- **使用時機**：每次生成角色回應時都會使用
+- **可用變數**：`{character_name}`
+- **動態組合**：角色設定 + 群組情況 + 用戶記憶 + 當前對話
+
+### 🔄 記憶系統工作流程
+
+```mermaid
+graph TD
+    A[用戶對話] --> B[user_memories 提取記憶]
+    B --> C[生成記憶條目]
+    C --> D{記憶數量 > memory_limit?}
+    D -->|是| E[memories_summary 統整記憶]
+    D -->|否| F[保存記憶]
+    E --> G[統整為摘要]
+    G --> F
+    F --> H[system 生成回應]
+    H --> I[角色回應用戶]
+```
+
+### 🎛️ 動態配置特性
+
+- **即時調整**：修改 Firestore 中的 `memory_limit` 無需重啟 BOT
+- **角色專屬**：每個角色可使用不同的 Gemini 模型和參數
+- **快取機制**：提示詞和配置具備快取功能，提升效能
+- **錯誤處理**：完整的變數檢查和錯誤提示
 
 ## 👥 群組對話追蹤功能
 
@@ -114,29 +164,34 @@ your-project/
 在 `.env` 檔案中設定以下環境變數：
 
 ```bash
-# Discord Bot Token 設定（全大寫）
-(CHARACTER_ID)_TOKEN=
-
-# 範例：
-# SHEN_ZE_TOKEN=
-# GU_BEICHEN_TOKEN=
-# FAN_CHENGXI_TOKEN=
+# Discord Bot Token 設定
+SHEN_ZE_TOKEN=你的Discord_Bot_Token
+GU_BEICHEN_TOKEN=你的Discord_Bot_Token
+FAN_CHENGXI_TOKEN=你的Discord_Bot_Token
+CHEN_ZHIWEN_TOKEN=你的Discord_Bot_Token
 
 # Google Gemini API 設定
-GOOGLE_API_KEY=
+GOOGLE_API_KEY=你的Google_API_Key
 
-# Firebase 金鑰，必須把所有內容放在同一行
-FIREBASE_CREDENTIALS_JSON={"type": "service_account","project_id": ... ,"universe_domain": "googleapis.com"}
+# Firebase 設定（重要：必須是完整的一行 JSON）
+FIREBASE_CREDENTIALS_JSON={"type":"service_account","project_id":"你的專案ID",...完整的Firebase憑證JSON...}
 ```
+
+### 🚨 重要設定提醒
+
+1. **Firebase 憑證**：`FIREBASE_CREDENTIALS_JSON` 必須是完整的一行 JSON 字串，不能有換行
+2. **Discord Token**：環境變數名稱必須與 Firestore 中的 `token_env` 欄位對應
+3. **排除集合**：系統會自動排除 `template`、`prompt` 之非角色集合
 
 ## 🔧 開發說明
 
-### 程式碼特色
-- **模組化設計**：核心功能分離，易於維護
-- **雲端配置**：所有設定都儲存在 Firestore，無需修改程式碼
-- **錯誤處理**：完整的異常處理機制
-- **日誌記錄**：詳細的運行日誌
-- **簡化結構**：移除 core 資料夾，所有檔案都在根目錄
+### 程式架構特色
+- **🆕 統一管理器**：`firebase_utils.py` 提供統一的 Firestore 連接和快取管理
+- **模組化設計**：核心功能分離，易於維護和擴展
+- **雲端配置**：所有設定都儲存在 Firestore，支援即時調整
+- **完整錯誤處理**：詳細的異常處理和調試資訊
+- **效能最佳化**：快取機制減少 Firestore 讀取次數
+- **日誌記錄**：清晰的運行狀態和錯誤訊息
 
 ## 📋 環境需求
 
@@ -144,6 +199,7 @@ FIREBASE_CREDENTIALS_JSON={"type": "service_account","project_id": ... ,"univers
 - **Discord.py >= 2.3.0**
 - **Firebase Admin SDK >= 6.0.0**
 - **Google Generative AI == 0.8.3**
+- **python-dotenv >= 1.0.0**
 - **其他相依套件**請參考 `requirements.txt`
 
 ## 授權
