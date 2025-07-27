@@ -53,7 +53,7 @@ class CharacterBot:
         # 顯示簡化的權限設定
         guild_count = len(self.allowed_guild_ids)
         channel_count = len(self.allowed_channel_ids)
-        print(f"🔐 {self.character_id}: {guild_count}個伺服器, {channel_count}個頻道")
+        print(f"🔐 {self.character_name}: {guild_count} 個伺服器，{channel_count} 個頻道")
         
         # 設定事件處理器和指令
         self._setup_events_and_commands()

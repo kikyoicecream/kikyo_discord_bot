@@ -6,8 +6,7 @@
 import os
 import json
 import random
-import firebase_admin
-from firebase_admin import firestore
+from firebase_utils import firebase_manager
 from dotenv import load_dotenv
 from typing import Dict, Optional, List
 
@@ -18,31 +17,10 @@ class SmartEmojiResponseManager:
     """表情符號回應管理器"""
     
     def __init__(self):
-        self.db = self._initialize_firebase()
+        self.firebase = firebase_manager
+        self.db = self.firebase.db
         self.cache = {}  # 快取表情符號配置
-    
-    def _initialize_firebase(self):
-        """初始化 Firebase"""
-        try:
-            if firebase_admin._apps:
-                db = firestore.client()
-                print("✅ Firebase 已初始化")
-                return db
-                
-            firebase_creds_json = os.getenv('FIREBASE_CREDENTIALS_JSON')
-            if firebase_creds_json:
-                firebase_creds_dict = json.loads(firebase_creds_json)
-                cred = firebase_admin.credentials.Certificate(firebase_creds_dict)
-                firebase_admin.initialize_app(cred)
-                db = firestore.client()
-                print("✅ Firebase 初始化成功")
-                return db
-            else:
-                print("❌ 找不到 FIREBASE_CREDENTIALS_JSON")
-                return None
-        except Exception as e:
-            print(f"❌ Firebase 初始化失敗: {e}")
-            return None
+
     
     def get_emoji_response(self, character_id: str, message_content: str, guild=None) -> Optional[str]:
         """檢查訊息並返回對應的情感表情符號"""

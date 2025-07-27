@@ -5,8 +5,7 @@ from typing import Dict, Optional, List
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import discord
-import firebase_admin
-from firebase_admin import firestore
+from firebase_utils import firebase_manager
 import memory
 
 class CharacterRegistry:
@@ -14,32 +13,9 @@ class CharacterRegistry:
     
     def __init__(self):
         self.characters: Dict[str, dict] = {}
-        self.db = None
-        self._initialize_firebase()
-    
-    def _initialize_firebase(self):
-        """初始化 Firebase"""
-        try:
-            # 檢查是否已經初始化過
-            if firebase_admin._apps:
-                self.db = firestore.client()
-                return
-                
-            firebase_creds_json = os.getenv('FIREBASE_CREDENTIALS_JSON')
-            if firebase_creds_json:
-                firebase_creds_dict = json.loads(firebase_creds_json)
-                cred = firebase_admin.credentials.Certificate(firebase_creds_dict)
-                firebase_admin.initialize_app(cred)
-                self.db = firestore.client()
-            else:
-                print("錯誤：找不到 FIREBASE_CREDENTIALS_JSON")
-        except Exception as e:
-            print(f"Firebase 初始化失敗: {e}")
-            # 如果初始化失敗，嘗試使用現有的連接
-            try:
-                self.db = firestore.client()
-            except:
-                self.db = None
+        self.firebase = firebase_manager
+        self.db = self.firebase.db
+
     
     def register_character(self, character_id: str):
         """註冊角色並從 Firestore 載入設定"""
