@@ -208,7 +208,18 @@ class FirebaseManager:
         )
         
         return content, model
-
+    
+    def get_memory_limit(self) -> int:
+        """從 Firestore 獲取記憶統整門檻"""
+        return self.get_firestore_field(
+            collection='prompt',
+            document='memories_summary',
+            field='memory_limit',
+            default=15,  # 預設值
+            cache_key="memory_limit",
+            description="記憶統整門檻"
+        )
+ 
 
 # 全域 Firebase 管理器實例
 firebase_manager = FirebaseManager() 

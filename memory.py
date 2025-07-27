@@ -14,7 +14,6 @@ from firebase_utils import firebase_manager
 
 
 # 常數定義
-MEMORY_LIMIT = 15  # 記憶統整門檻
 DEFAULT_MODEL = 'gemini-2.0-flash'  # 預設模型
 DEFAULT_RESPONSE_MODEL = 'gemini-2.5-pro'  # 預設回應模型
 
@@ -70,8 +69,9 @@ class MemoryManager:
             user_memories.append(summarized_memory)
             
             # 當記憶超過門檻時，統整成一則摘要
-            if len(user_memories) > MEMORY_LIMIT:
-                print(f"📋 使用者 {user_id} 記憶超過 {MEMORY_LIMIT} 則，正在統整記憶……")
+            memory_limit = firebase_manager.get_memory_limit()
+            if len(user_memories) > memory_limit:
+                print(f"📋 使用者 {user_id} 記憶超過 {memory_limit} 則，正在統整記憶……")
                 consolidated_memory = await self._consolidate_memories_with_gemini(user_memories, user_name)
                 user_memories = [consolidated_memory]  # 只保留統整後的記憶
                 print(f"✅ 記憶已統整完成")
