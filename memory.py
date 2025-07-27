@@ -148,10 +148,16 @@ class MemoryManager:
             character_name = system_config.get('name', character_id)  # 如果沒有設定 name，回退使用 character_id
             
             # 格式化 Firestore 中的 prompt，然後添加對話內容
-            formatted_prompt = base_prompt.format(
-                character_name=character_name,  # 改用 character_name
-                user_name=user_name
-            )
+            try:
+                formatted_prompt = base_prompt.format(
+                    character_name=character_name,  # 改用 character_name
+                    user_name=user_name
+                )
+            except KeyError as e:
+                print(f"❌ user_memories prompt 中使用了不存在的變數：{e}")
+                print(f"📋 可用變數：character_name={character_name}, user_name={user_name}")
+                print(f"🔍 請檢查 Firestore /prompt/user_memories/content 中是否使用了 {{character_id}} 而不是 {{character_name}}")
+                return f"使用者進行了對話互動：{content[:30]}……"
             
             prompt = f"""
 {formatted_prompt}
@@ -192,9 +198,15 @@ Conversation:
                 return f"與 {user_name} 有過多次對話互動"
             
             # 格式化 Firestore 中的 prompt，然後添加現有記憶
-            formatted_prompt = base_prompt.format(
-                user_name=user_name
-            )
+            try:
+                formatted_prompt = base_prompt.format(
+                    user_name=user_name
+                )
+            except KeyError as e:
+                print(f"❌ memories_summary prompt 中使用了不存在的變數：{e}")
+                print(f"📋 可用變數：user_name={user_name}")
+                print(f"🔍 請檢查 Firestore /prompt/memories_summary/content 中的變數名稱")
+                return f"與 {user_name} 有過多次對話互動"
             
             prompt = f"""
 {formatted_prompt}
@@ -256,7 +268,13 @@ def _build_system_prompt(character_name: str, character_persona: str, user_displ
     if not base_system_prompt.strip():
         raise ValueError("Firestore 中沒有 system prompt")
     
-    formatted_system_prompt = base_system_prompt.format(character_name=character_name)
+    try:
+        formatted_system_prompt = base_system_prompt.format(character_name=character_name)
+    except KeyError as e:
+        print(f"❌ system prompt 中使用了不存在的變數：{e}")
+        print(f"📋 可用變數：character_name={character_name}")
+        print(f"🔍 請檢查 Firestore /prompt/system/content 中是否使用了不存在的變數")
+        raise ValueError(f"System prompt 變數錯誤：{e}")
     memory_context = "\n".join(user_memories) if user_memories else "暫無記憶"
     
     return f"""{formatted_system_prompt}

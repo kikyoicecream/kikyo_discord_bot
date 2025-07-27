@@ -110,7 +110,7 @@ class FirebaseManager:
                     self.set_to_cache(cache_key, value)
                 
                 if description:
-                    print(f"✅ 已載入 {description}: {value}")
+                    print(f"✅ 已載入 {description}")
                 return value
             else:
                 if description:
@@ -135,13 +135,19 @@ class FirebaseManager:
             
             # 從 Firestore 讀取
             doc = self.db.collection(character_id).document('system').get()
-            gemini_config = doc.to_dict().get('gemini_config', {}) if doc.exists else {}
+            if doc.exists:
+                system_data = doc.to_dict()
+                gemini_config = system_data.get('gemini_config', {})
+                character_name = system_data.get('name', character_id)  # 獲取角色名稱
+            else:
+                gemini_config = {}
+                character_name = character_id
             
             # 更新快取
             self.set_to_cache(cache_key, gemini_config)
             
             if gemini_config:
-                print(f"✅ 已載入角色 {character_id} 的 Gemini 設定: {list(gemini_config.keys())}")
+                print(f"✅ 已載入角色 {character_name} 的 Gemini 設定")
             
             return gemini_config
             
@@ -168,7 +174,8 @@ class FirebaseManager:
             self.set_to_cache(cache_key, system_config)
             
             if system_config:
-                print(f"✅ 已載入角色 {character_id} 的系統設定")
+                character_name = system_config.get('name', character_id)  # 獲取角色名稱
+                print(f"✅ 已載入角色 {character_name} 的系統設定")
             
             return system_config
             
