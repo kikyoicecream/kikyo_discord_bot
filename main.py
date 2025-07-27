@@ -45,7 +45,7 @@ class MultiBotLauncher:
             return []
         
         # 排除的集合名稱（範本、測試等）
-        excluded_collections = ["template"]
+        excluded_collections = ["template", "prompt"]
         
         try:
             # 獲取所有頂層集合

@@ -10,6 +10,10 @@ import time
 from typing import Dict, Any, Optional, Tuple
 from google.cloud import firestore
 from google.oauth2 import service_account
+from dotenv import load_dotenv
+
+# 載入環境變數
+load_dotenv()
 
 
 class FirebaseManager:
