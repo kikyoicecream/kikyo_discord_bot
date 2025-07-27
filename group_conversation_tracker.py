@@ -4,38 +4,24 @@
 負責追蹤活躍使用者和群組對話上下文
 """
 
-import json
-import os
 import asyncio
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Set
-from google.cloud import firestore
-from google.oauth2 import service_account
+from firebase_utils import firebase_manager
 
 class GroupConversationTracker:
     """群組對話追蹤器"""
     
     def __init__(self):
-        self.db = self._init_firestore()
+        # 使用統一的 Firebase 管理器
+        self.firebase = firebase_manager
         self.active_users: Dict[str, Dict[int, Dict[str, dict]]] = {}  # {character_id: {channel_id: {user_id: user_data}}}
         self.channel_contexts: Dict[str, Dict[int, List[dict]]] = {}   # {character_id: {channel_id: [message_contexts]}}
         
-    def _init_firestore(self):
-        """初始化 Firestore 連接"""
-        try:
-            firebase_credentials = os.getenv("FIREBASE_CREDENTIALS_JSON")
-            if not firebase_credentials:
-                print("❌ 未找到 FIREBASE_CREDENTIALS_JSON 環境變數")
-                return None
-                
-            credentials_dict = json.loads(firebase_credentials)
-            credentials = service_account.Credentials.from_service_account_info(credentials_dict)
-            
-            db = firestore.Client(credentials=credentials, project=credentials_dict['project_id'])
-            return db
-        except Exception as e:
-            print(f"❌ 群組對話追蹤器 Firestore 連接失敗：{e}")
-            return None
+    @property
+    def db(self):
+        """獲取 Firestore 資料庫實例"""
+        return self.firebase.db
     
     def _ensure_channel_context_exists(self, character_id: str, channel_id: int):
         """確保頻道上下文存在"""

@@ -5,11 +5,9 @@ import os
 import sys
 import time
 import asyncio
-import json
 from dotenv import load_dotenv
 load_dotenv()
-from google.cloud import firestore
-from google.oauth2 import service_account
+from firebase_utils import firebase_manager
 from character_registry_custom import CharacterRegistry
 import memory
 from emoji_responses import smart_emoji_manager
@@ -31,8 +29,8 @@ class CharacterBot:
         self.character_registry.register_character(self.character_id)
         self.character_name = self._get_character_name()
 
-        # 初始化 Firestore 連接
-        self.db = self._init_firestore()
+        # 使用統一的 Firebase 管理器
+        self.firebase = firebase_manager
 
         # --- 修正 #1: 統一使用 commands.Bot ---
         # 直接將 self.client 初始化為 commands.Bot，它包含了所有需要的功能，包括 .tree
@@ -60,22 +58,10 @@ class CharacterBot:
         # 設定事件處理器和指令
         self._setup_events_and_commands()
     
-    def _init_firestore(self):
-        """初始化 Firestore 連接"""
-        try:
-            firebase_credentials = os.getenv("FIREBASE_CREDENTIALS_JSON")
-            if not firebase_credentials:
-                print("❌ 未找到 FIREBASE_CREDENTIALS_JSON 環境變數")
-                return None
-                
-            credentials_dict = json.loads(firebase_credentials)
-            credentials = service_account.Credentials.from_service_account_info(credentials_dict)
-            
-            db = firestore.Client(credentials=credentials, project=credentials_dict['project_id'])
-            return db
-        except Exception as e:
-            print(f"❌ Firestore 連接失敗：{e}")
-            return None
+    @property
+    def db(self):
+        """獲取 Firestore 資料庫實例"""
+        return self.firebase.db
         
     def _get_character_name(self):
         """取得角色名稱"""
@@ -101,7 +87,7 @@ class CharacterBot:
                 synced = await self.client.tree.sync()
                 print(f"✅ {self.character_name} Bot 同步了 {len(synced)} 個指令")
             except Exception as e:
-                print(f"❌ {self.character_name} Bot 指令同步失敗：{e}")
+                self.firebase.log_error(f"{self.character_name} Bot 指令同步", e)
 
         @self.client.event
         async def on_disconnect():
@@ -130,7 +116,7 @@ class CharacterBot:
                     await message.add_reaction(emoji_response)
                     print(f"😊 {self.character_id} 對關鍵字回應表情符號: {emoji_response}")
                 except Exception as e:
-                    print(f"❌ 添加表情符號失敗: {e}")
+                    self.firebase.log_error("添加表情符號", e)
                 # 不 return，讓程式繼續處理文字回應
             
             # 檢查是否需要回應
@@ -248,7 +234,7 @@ class CharacterBot:
     def _get_character_permission_from_firestore(self, permission_field: str) -> List[str]:
         """從 Firestore 取得角色權限設定（使用字串處理 Discord ID）"""
         if not self.db:
-            print(f"❌ Firestore 未連接，無法讀取 {self.character_id} 的權限設定")
+            self.firebase.log_error(f"讀取 {self.character_id} 權限設定", "Firestore 未連接")
             return []
         
         try:
@@ -273,24 +259,24 @@ class CharacterBot:
                 
                 return processed_permissions
             else:
-                print(f"❌ 找不到 {self.character_id} 的系統配置")
+                self.firebase.log_error(f"查找 {self.character_id} 系統配置", "找不到系統配置")
                 return []
                 
         except Exception as e:
-            print(f"❌ 從 Firestore 讀取 {self.character_id} 權限失敗：{e}")
+            self.firebase.log_error(f"從 Firestore 讀取 {self.character_id} 權限", e)
             return []
         
     def run(self):
         """運行 Bot"""
         if not self.token:
-            print(f"❌ 錯誤：請在 .env 檔案中設定 {self.token_env_var}")
+            self.firebase.log_error("取得 Discord Token", f"請在 .env 檔案中設定 {self.token_env_var}")
             return
         
         try:
             # 現在 self.client 是一個 Bot 物件，可以直接運行
             self.client.run(self.token)
         except Exception as e:
-            print(f"❌ {self.character_name} Bot 運行時發生錯誤：{e}")
+            self.firebase.log_error(f"{self.character_name} Bot 運行", e)
 
 # --- 啟動器部分保持不變 ---
 def run_character_bot_with_restart(character_id: str, token_env_var: str, proactive_keywords: Optional[List[str]] = None, gemini_config: Optional[dict] = None):

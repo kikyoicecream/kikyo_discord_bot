@@ -9,12 +9,10 @@ import sys
 import os
 import time
 import threading
-import json
 import logging
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv
-from google.cloud import firestore
-from google.oauth2 import service_account
+from firebase_utils import firebase_manager
 from character_bot import run_character_bot_with_restart
 
 # 設定 Discord 日誌級別，減少詳細訊息
@@ -30,32 +28,20 @@ class MultiBotLauncher:
     """多 Bot 啟動器"""
     
     def __init__(self):
-        self.db = self._init_firestore()
+        # 使用統一的 Firebase 管理器
+        self.firebase = firebase_manager
         self.bots = self.load_characters_from_firestore()
         self.running = False
     
-    def _init_firestore(self):
-        """初始化 Firestore 連接"""
-        try:
-            firebase_credentials = os.getenv("FIREBASE_CREDENTIALS_JSON")
-            if not firebase_credentials:
-                print("❌ 未找到 FIREBASE_CREDENTIALS_JSON 環境變數")
-                return None
-                
-            credentials_dict = json.loads(firebase_credentials)
-            credentials = service_account.Credentials.from_service_account_info(credentials_dict)
-            
-            db = firestore.Client(credentials=credentials, project=credentials_dict['project_id'])
-            print("✅ Firestore 連接成功")
-            return db
-        except Exception as e:
-            print(f"❌ Firestore 連接失敗：{e}")
-            return None
+    @property
+    def db(self):
+        """獲取 Firestore 資料庫實例"""
+        return self.firebase.db
     
     def _get_all_character_ids(self):
         """動態獲取所有角色集合 ID"""
         if not self.db:
-            print("❌ Firestore 未連接，無法獲取角色列表")
+            self.firebase.log_error("獲取角色列表", "Firestore 未連接")
             return []
         
         # 排除的集合名稱（範本、測試等）
@@ -82,13 +68,13 @@ class MultiBotLauncher:
             return character_ids
             
         except Exception as e:
-            print(f"❌ 獲取角色集合失敗：{e}")
+            self.firebase.log_error("獲取角色集合", e)
             return []
     
     def load_characters_from_firestore(self):
         """從 Firestore 載入角色設定"""
         if not self.db:
-            print("❌ Firestore 未連接，無法載入角色設定")
+            self.firebase.log_error("載入角色設定", "Firestore 未連接")
             return []
         
         try:
@@ -116,52 +102,38 @@ class MultiBotLauncher:
                             })
                             print(f"✅ 已從 Firestore 載入角色：{character_name}")
                 except Exception as e:
-                    print(f"❌ 載入角色 {character_id} 失敗：{e}")
+                    self.firebase.log_error(f"載入角色 {character_id}", e)
                     continue
             
             return bots
             
         except Exception as e:
-            print(f"❌ 從 Firestore 載入角色設定失敗: {e}")
+            self.firebase.log_error("從 Firestore 載入角色設定", e)
             return []
     
     def load_character_config(self, character_id: str) -> Optional[Dict[str, Any]]:
         """從 Firestore 載入角色配置"""
-        if not self.db:
-            print(f"❌ Firestore 未連接，無法載入 {character_id} 配置")
-            return None
-            
         try:
-            # 從 Firestore 讀取系統配置
-            system_ref = self.db.collection(character_id).document('system')
-            system_doc = system_ref.get()
+            # 使用統一的系統配置讀取方法
+            system_config = self.firebase.get_character_system_config(character_id)
             
-            if system_doc.exists:
-                system_config = system_doc.to_dict()
-                
-                # 轉換為舊格式以保持相容性
-                config = {
-                    'name': system_config.get('name', character_id),
-                    'token_env': system_config.get('token_env', ''),
-                    'proactive_keywords': system_config.get('proactive_keywords', []),
-                    'enabled': system_config.get('enabled', True),
-                    'gemini_config': system_config.get('gemini_config', {
-                        'temperature': system_config.get('temperature', 1.0),
-                        'top_k': system_config.get('top_k', 40),
-                        'top_p': system_config.get('top_p', 0.9),
-                        'model': 'gemini-2.5-pro',
-                        'max_output_tokens': 2048,
-                        'safety_settings': {}
-                    })
-                }
-                
-                return config
-            else:
-                print(f"❌ 找不到角色 {character_id} 的系統配置")
+            if not system_config:
+                self.firebase.log_error("載入角色配置", f"找不到角色 {character_id} 的系統配置")
                 return None
+            
+            # 簡化的配置格式（移除複雜的向下相容邏輯）
+            config = {
+                'name': system_config.get('name', character_id),
+                'token_env': system_config.get('token_env', ''),
+                'proactive_keywords': system_config.get('proactive_keywords', []),
+                'enabled': system_config.get('enabled', True),
+                'gemini_config': system_config.get('gemini_config', {})  # 直接使用 Firestore 中的設定
+            }
+            
+            return config
                 
         except Exception as e:
-            print(f"❌ 從 Firestore 載入角色配置失敗: {e}")
+            self.firebase.log_error("從 Firestore 載入角色配置", e)
             return None
     
     def check_tokens(self):
