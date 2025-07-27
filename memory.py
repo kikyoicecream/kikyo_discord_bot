@@ -300,7 +300,6 @@ async def generate_character_response(character_name: str, character_persona: st
         merged_config = firestore_config.copy()
         if gemini_config:
             merged_config.update(gemini_config)
-            print(f"🔧 使用自訂 gemini_config 覆蓋部分設定")
         
         # 檢查角色是否啟用
         if not merged_config.get('enabled', True):
