@@ -80,6 +80,10 @@ class CharacterRegistry:
         mentioned = client.user.mentioned_in(message)
         contains_keyword = False
         
+        # 如果是私訊，總是回應（不需要關鍵字）
+        if message.guild is None:
+            return True
+        
         if proactive_keywords:
             contains_keyword = any(keyword.lower() in message.content.lower() for keyword in proactive_keywords)
         
