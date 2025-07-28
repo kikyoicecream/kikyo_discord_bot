@@ -49,11 +49,17 @@ class CharacterBot:
         # 權限設定 - 從 Firestore 讀取（使用字串處理 Discord ID）
         self.allowed_guild_ids = self._get_character_permission_from_firestore("allowed_guilds")
         self.allowed_channel_ids = self._get_character_permission_from_firestore("allowed_channels")
+        # 新增：私訊權限設定
+        self.allowed_dm_users = self._get_character_permission_from_firestore("allowed_dm_users")
+        self.enable_dm = self._get_dm_enable_setting()
         
         # 顯示簡化的權限設定
         guild_count = len(self.allowed_guild_ids)
         channel_count = len(self.allowed_channel_ids)
+        dm_users_count = len(self.allowed_dm_users)
+        dm_status = "啟用" if self.enable_dm else "停用"
         print(f"🔐 {self.character_name}: {guild_count} 個伺服器，{channel_count} 個頻道")
+        print(f"💬 {self.character_name}: 私訊功能 {dm_status}，{dm_users_count} 個授權使用者")
         
         # 設定事件處理器和指令
         self._setup_events_and_commands()
@@ -103,11 +109,28 @@ class CharacterBot:
             if message.author == self.client.user:
                 return
             
-            # 權限檢查... (使用字串比較)
-            if self.allowed_channel_ids and str(message.channel.id) not in self.allowed_channel_ids:
-                return
-            if self.allowed_guild_ids and message.guild and str(message.guild.id) not in self.allowed_guild_ids:
-                return
+            # 權限檢查改進版
+            # 檢查是否為私訊
+            if message.guild is None:  # 私訊
+                # 檢查是否啟用私訊功能
+                if not self.enable_dm:
+                    return
+                
+                # 檢查使用者是否在允許私訊的名單中
+                if self.allowed_dm_users and str(message.author.id) not in self.allowed_dm_users:
+                    # 可選：向未授權的使用者發送提示訊息
+                    try:
+                        await message.author.send("❌ 抱歉，您沒有私訊權限。")
+                    except:
+                        pass  # 忽略無法發送私訊的錯誤
+                    return
+            
+            else:  # 伺服器訊息
+                # 原有的頻道和伺服器權限檢查
+                if self.allowed_channel_ids and str(message.channel.id) not in self.allowed_channel_ids:
+                    return
+                if self.allowed_guild_ids and str(message.guild.id) not in self.allowed_guild_ids:
+                    return
             
             # 檢查表情符號回應
             emoji_response = await self._check_emoji_response(message)
@@ -265,6 +288,26 @@ class CharacterBot:
         except Exception as e:
             self.firebase.log_error(f"從 Firestore 讀取 {self.character_id} 權限", e)
             return []
+        
+    def _get_dm_enable_setting(self) -> bool:
+        """從 Firestore 取得私訊功能啟用設定"""
+        if not self.db:
+            self.firebase.log_error(f"讀取 {self.character_id} 私訊功能設定", "Firestore 未連接")
+            return False
+        
+        try:
+            system_ref = self.db.collection(self.character_id).document('system')
+            system_doc = system_ref.get()
+            
+            if system_doc.exists:
+                system_config = system_doc.to_dict()
+                return system_config.get('enable_dm', False) # 預設為 False
+            else:
+                self.firebase.log_error(f"查找 {self.character_id} 系統配置", "找不到系統配置")
+                return False
+        except Exception as e:
+            self.firebase.log_error(f"從 Firestore 讀取 {self.character_id} 私訊功能設定", e)
+            return False
         
     def run(self):
         """運行 Bot"""
