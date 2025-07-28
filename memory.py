@@ -318,7 +318,7 @@ async def generate_character_response(character_name: str, character_persona: st
         
         # 生成回應
         response = await asyncio.to_thread(model.generate_content, system_prompt)
-        return response.text if response.text else "「……」"
+        return response.text if response.text else "「抱歉，我現在腦中沒什麼想法……」"
         
     except ValueError as e:
         print(f"❌ {e}")
