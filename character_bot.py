@@ -344,4 +344,4 @@ def run_character_bot_with_restart(character_id: str, token_env_var: str, proact
             os.execv(sys.executable, [sys.executable] + sys.argv)
         else:
             print(f"--- {character_id} Bot 已停止，退出碼為 {e.code} ---")
-            sys.exit(e.code)
+            sys.exit(e.code)    
