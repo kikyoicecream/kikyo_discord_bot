@@ -221,7 +221,7 @@ class MultiBotLauncher:
             return
         
         for i, bot in enumerate(self.bots, 1):
-            status = "🟢 運行中" if bot['process'] and bot['process'].poll() is None else "🔴 已停止"
+            status = "🟢 運作中" if bot['process'] and bot['process'].poll() is None else "🔴 已停止"
             enabled = "✅ 啟用" if bot['enabled'] else "❌ 停用"
             print(f"{i}. {bot['name']}: {status} ({enabled})")
 
