@@ -88,10 +88,10 @@ class FirebaseManager:
     
     def get_firestore_field(self, collection: str, document: str, field: str, 
                            default: Any = None, cache_key: str = None, 
-                           description: str = None) -> Any:
+                           description: str = None, show_load_message: bool = True) -> Any:
         """通用的 Firestore 欄位讀取方法"""
         if not self.db:
-            if description:
+            if description and show_load_message:
                 print(f"❌ Firestore 未連接，無法獲取 {description}")
             return default
         
@@ -113,16 +113,16 @@ class FirebaseManager:
                 if cache_key:
                     self.set_to_cache(cache_key, value)
                 
-                if description:
+                if description and show_load_message:
                     print(f"✅ 已載入 {description}")
                 return value
             else:
-                if description:
+                if description and show_load_message:
                     print(f"⚠️ 找不到 {description}，使用預設值: {default}")
                 return default
                 
         except Exception as e:
-            if description:
+            if description and show_load_message:
                 self.log_error(f"獲取 {description}", e)
             return default
     
@@ -150,8 +150,10 @@ class FirebaseManager:
             # 更新快取
             self.set_to_cache(cache_key, gemini_config)
             
-            if gemini_config:
+            # 只在首次載入時顯示訊息
+            if gemini_config and not self.get_from_cache(f"{character_id}_gemini_loaded"):
                 print(f"✅ 已載入角色 {character_name} 的 Gemini 設定")
+                self.set_to_cache(f"{character_id}_gemini_loaded", True)
             
             return gemini_config
             
@@ -177,9 +179,11 @@ class FirebaseManager:
             # 更新快取
             self.set_to_cache(cache_key, system_config)
             
-            if system_config:
+            # 只在首次載入時顯示訊息
+            if system_config and not self.get_from_cache(f"{character_id}_system_loaded"):
                 character_name = system_config.get('name', character_id)  # 獲取角色名稱
                 print(f"✅ 已載入角色 {character_name} 的系統設定")
+                self.set_to_cache(f"{character_id}_system_loaded", True)
             
             return system_config
             
@@ -194,8 +198,7 @@ class FirebaseManager:
             document=prompt_type,
             field='content',
             default='',
-            cache_key=f"{prompt_type}_content",
-            description=f"{prompt_type} prompt 內容"
+            cache_key=f"{prompt_type}_content"
         )
         
         model = self.get_firestore_field(
@@ -203,8 +206,7 @@ class FirebaseManager:
             document=prompt_type,
             field='model',
             default='gemini-2.0-flash',
-            cache_key=f"{prompt_type}_model",
-            description=f"{prompt_type} 模型設定"
+            cache_key=f"{prompt_type}_model"
         )
         
         return content, model
@@ -216,8 +218,7 @@ class FirebaseManager:
             document='memories_summary',
             field='memory_limit',
             default=15,  # 預設值
-            cache_key="memory_limit",
-            description="記憶統整門檻"
+            cache_key="memory_limit"
         )
     
     def get_character_prompt_config(self, character_id: str, prompt_type: str) -> Tuple[str, str]:
