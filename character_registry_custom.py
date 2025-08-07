@@ -190,7 +190,8 @@ class CharacterRegistry:
                 user_prompt, 
                 user_name,
                 group_context,
-                gemini_config
+                gemini_config,
+                character_id  # 傳遞 character_id 參數
             )
             
             # 保存記憶

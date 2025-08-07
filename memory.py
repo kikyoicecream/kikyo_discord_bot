@@ -72,7 +72,7 @@ class MemoryManager:
             memory_limit = firebase_manager.get_memory_limit()
             if len(user_memories) > memory_limit:
                 print(f"📋 使用者 {user_id} 記憶超過 {memory_limit} 則，正在統整記憶……")
-                consolidated_memory = await self._consolidate_memories_with_gemini(user_memories, user_name)
+                consolidated_memory = await self._consolidate_memories_with_gemini(user_memories, user_name, character_id)
                 user_memories = [consolidated_memory]  # 只保留統整後的記憶
                 print(f"✅ 記憶已統整完成")
             
@@ -118,9 +118,12 @@ class MemoryManager:
             self.firebase.log_error("獲取記憶", e)
             return []
     
-    def _get_prompt_from_firestore(self, prompt_type: str) -> tuple[str, str]:
-        """從 Firestore 獲取指定類型的 prompt 和 model 設定"""
-        return self.firebase.get_prompt_with_model(prompt_type)
+    def _get_prompt_from_firestore(self, prompt_type: str, character_id: str = None) -> tuple[str, str]:
+        """從 Firestore 獲取指定類型的 prompt 和 model 設定，支援個別角色自定義prompt"""
+        if character_id:
+            return self.firebase.get_character_prompt_config(character_id, prompt_type)
+        else:
+            return self.firebase.get_prompt_with_model(prompt_type)
 
     def _get_character_gemini_config_from_firestore(self, character_id: str) -> dict:
         """從 Firestore 獲取角色專用的完整 Gemini 設定"""
@@ -134,8 +137,8 @@ class MemoryManager:
     async def _summarize_memory_with_gemini(self, content: str, user_name: str = "使用者", character_id: str = "角色") -> str:
         """使用 Gemini API 整理和摘要記憶"""
         try:
-            # 從 Firestore 獲取 prompt 和 model 設定
-            base_prompt, model_name = self._get_prompt_from_firestore('user_memories')
+            # 從 Firestore 獲取 prompt 和 model 設定，支援個別角色自定義prompt
+            base_prompt, model_name = self._get_prompt_from_firestore('user_memories', character_id)
             if not base_prompt.strip():
                 print(f"❌ Firestore 中沒有 user_memories prompt，無法處理記憶")
                 return f"使用者進行了對話互動：{content[:30]}……"
@@ -180,8 +183,8 @@ Conversation:
         except Exception as e:
             return self.firebase.log_error("記憶摘要", e, f"使用者進行了對話互動：{content[:30]}……")
 
-    async def _consolidate_memories_with_gemini(self, memories: List[str], user_name: str = "使用者") -> str:
-        """使用 Gemini API 將多則記憶統整成一則摘要（基於使用者的 compress_memories 方法）"""
+    async def _consolidate_memories_with_gemini(self, memories: List[str], user_name: str = "使用者", character_id: str = None) -> str:
+        """使用 Gemini API 將多別角色自定義prompt）"""
         try:
             
             # 過濾掉 None 或無意義的記憶
@@ -191,8 +194,8 @@ Conversation:
                 print("⚠️ 所有記憶都是 None，使用備用統整")
                 return f"與 {user_name} 有過多次對話互動"
             
-            # 從 Firestore 獲取 prompt 和 model 設定
-            base_prompt, model_name = self._get_prompt_from_firestore('memories_summary')
+            # 從 Firestore 獲取 prompt 和 model 設定，支援個別角色自定義prompt
+            base_prompt, model_name = self._get_prompt_from_firestore('memories_summary', character_id)
             if not base_prompt.strip():
                 print(f"❌ Firestore 中沒有 memories_summary prompt，無法統整記憶")
                 return f"與 {user_name} 有過多次對話互動"
@@ -261,10 +264,14 @@ def _create_gemini_model(merged_config: dict) -> genai.GenerativeModel:
     return genai.GenerativeModel(model_name, generation_config=generation_config, safety_settings=safety_settings)  # type: ignore
 
 def _build_system_prompt(character_name: str, character_persona: str, user_display_name: str, 
-                        group_context: str, user_memories: List[str], user_prompt: str) -> str:
+                        group_context: str, user_memories: List[str], user_prompt: str, character_id: str = None) -> str:
     """構建系統提示詞"""
-    # 獲取系統提示詞模板
-    base_system_prompt, _ = firebase_manager.get_prompt_with_model('system')
+    # 獲取系統提示詞模板，支援個別角色自定義prompt
+    if character_id:
+        base_system_prompt, _ = firebase_manager.get_character_prompt_config(character_id, 'system')
+    else:
+        base_system_prompt, _ = firebase_manager.get_prompt_with_model('system')
+    
     if not base_system_prompt.strip():
         raise ValueError("Firestore 中沒有 system prompt")
     
@@ -292,7 +299,7 @@ def _build_system_prompt(character_name: str, character_persona: str, user_displ
 {user_display_name}：{user_prompt}
 """
 
-async def generate_character_response(character_name: str, character_persona: str, user_memories: List[str], user_prompt: str, user_display_name: str, group_context: str = "", gemini_config: Optional[dict] = None) -> str:
+async def generate_character_response(character_name: str, character_persona: str, user_memories: List[str], user_prompt: str, user_display_name: str, group_context: str = "", gemini_config: Optional[dict] = None, character_id: str = None) -> str:
     """生成角色回應（專注於個人記憶，群組上下文由外部提供）"""
     try:
         # 合併配置設定
@@ -313,8 +320,10 @@ async def generate_character_response(character_name: str, character_persona: st
         
         # 創建模型和提示詞
         model = _create_gemini_model(merged_config)
+        # 使用傳入的 character_id，如果沒有的話使用 character_name
+        actual_character_id = character_id if character_id else character_name
         system_prompt = _build_system_prompt(character_name, character_persona, user_display_name, 
-                                           group_context, user_memories, user_prompt)
+                                           group_context, user_memories, user_prompt, actual_character_id)
         
         # 生成回應
         response = await asyncio.to_thread(model.generate_content, system_prompt)

@@ -11,6 +11,7 @@
 - 🎭 **多角色支援**：同時 Host 多個 BOT，模組化新增角色
 - 🧠 **智慧記憶系統**：基於 AI 的記憶提取、統整與管理
 - 📝 **Prompt 模板系統**：模組化的 AI 提示詞管理，支援動態配置
+- 🎨 **個別角色自定義Prompt**：每個角色可擁有獨特的 prompt 設定，支援不同的表現風格 🆕
 - 👥 **群組對話追蹤**：追蹤活躍使用者，支援多使用者群組對話
 - 💬 **私訊功能**：支援與授權使用者的私訊對話，具備權限管理
 - ✨ **表情符號回應**：依照使用者對話內容，觸發表情符號回應
@@ -30,7 +31,7 @@ Kikyo Discord BOT/
 ├── emoji_responses.py              # 表情符號回應系統
 ├── memory.py                       # AI 記憶管理與回應生成
 ├── group_conversation_tracker.py   # 群組對話追蹤
-├── firebase_utils.py               # Firebase 統一管理器 🆕
+├── firebase_utils.py               # Firebase 統一管理器
 ├── requirements.txt                # Python 依賴套件
 ├── README.md                       # 專案說明文件
 └── .env                            # 環境變數配置
@@ -40,14 +41,14 @@ Kikyo Discord BOT/
 
 ```
 your-project/
-├── prompt/                        # 🆕 AI 提示詞模板系統
+├── prompt/                        # AI 提示詞模板系統
 │   ├── user_memories/             # 記憶提取提示詞
 │   │   ├── content: "提示詞內容"
 │   │   └── model: "gemini-2.0-flash"
 │   ├── memories_summary/          # 記憶統整提示詞
 │   │   ├── content: "提示詞內容"
 │   │   ├── model: "gemini-2.0-flash"
-│   │   └── memory_limit: 15       # 🆕 記憶統整門檻
+│   │   └── memory_limit: 15       # 記憶統整門檻
 │   └── system/                    # 系統角色提示詞
 │       ├── content: "提示詞內容"
 │       └── model: "gemini-2.5-pro"
@@ -68,10 +69,12 @@ your-project/
 │       ├── enabled: true
 │       ├── allowed_guilds: []
 │       ├── allowed_channels: []
-│       ├── enable_dm: false       # 🆕 私訊功能開關
-│       ├── allowed_dm_users: []   # 🆕 允許私訊的使用者 ID 列表
+│       ├── enable_dm: false       # 私訊功能開關
+│       ├── allowed_dm_users: []   # 允許私訊的使用者 ID 列表
 │       ├── intro: "角色簡介文字"
-│       └── gemini_config: {       # 🆕 統一 Gemini 配置
+│       ├── allowed_custom_prompt: false  # 是否啟用自定義prompt
+│       ├── custom_prompt: "自定義prompt內容"  # 個別角色prompt設定
+│       └── gemini_config: {       # 統一 Gemini 配置
 │           ├── model: "gemini-2.5-pro"
 │           ├── temperature: 1.0
 │           ├── top_k: 40
@@ -125,6 +128,7 @@ graph TD
 
 - **即時調整**：修改 Firestore 中的 `memory_limit` 無需重啟 BOT
 - **角色專屬**：每個角色可使用不同的 Gemini 模型和參數
+- **個別角色Prompt**：每個角色可擁有獨特的 prompt 設定
 - **快取機制**：提示詞和配置具備快取功能，提升效能
 - **錯誤處理**：完整的變數檢查和錯誤提示
 
@@ -206,6 +210,21 @@ GOOGLE_API_KEY=你的Google_API_Key
 FIREBASE_CREDENTIALS_JSON={"type":"service_account","project_id":"你的專案ID",...完整的Firebase憑證JSON...}
 ```
 
+### 個別角色Prompt配置 🆕
+
+每個角色可以在 Firestore 的 `{character_id}/system` 文件中設定：
+
+```json
+{
+  "allowed_custom_prompt": true,  // 啟用自定義prompt
+  "custom_prompt": "你的自定義prompt內容..."  // 自定義prompt
+}
+```
+
+**配置選項：**
+- `allowed_custom_prompt`: `true` 啟用自定義prompt，`false` 使用統一prompt
+- `custom_prompt`: 角色的自定義prompt內容，支援 `{character_name}` 變數
+
 ### 🚨 重要設定提醒
 
 1. **Firebase 憑證**：`FIREBASE_CREDENTIALS_JSON` 必須是完整的一行 JSON 字串，不能有換行
@@ -215,7 +234,8 @@ FIREBASE_CREDENTIALS_JSON={"type":"service_account","project_id":"你的專案ID
 ## 🔧 開發說明
 
 ### 程式架構特色
-- **🆕 統一管理器**：`firebase_utils.py` 提供統一的 Firestore 連接和快取管理
+- **統一管理器**：`firebase_utils.py` 提供統一的 Firestore 連接和快取管理
+- **個別角色 Prompt 系統**：支援每個角色擁有獨特的prompt設定 
 - **模組化設計**：核心功能分離，易於維護和擴展
 - **雲端配置**：所有設定都儲存在 Firestore，支援即時調整
 - **完整錯誤處理**：詳細的異常處理和調試資訊
