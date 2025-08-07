@@ -119,8 +119,11 @@ class MemoryManager:
             return []
     
     def _get_prompt_from_firestore(self, prompt_type: str, character_id: str = None) -> tuple[str, str]:
-        """從 Firestore 獲取指定類型的 prompt 和 model 設定，支援個別角色自定義prompt"""
-        if character_id:
+        """從 Firestore 獲取指定類型的 prompt 和 model 設定"""
+        # 記憶相關的prompt使用統一設定，只有system prompt支援個別角色自定義
+        if prompt_type in ['user_memories', 'memories_summary']:
+            return self.firebase.get_prompt_with_model(prompt_type)
+        elif character_id:
             return self.firebase.get_character_prompt_config(character_id, prompt_type)
         else:
             return self.firebase.get_prompt_with_model(prompt_type)
