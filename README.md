@@ -210,14 +210,14 @@ GOOGLE_API_KEY=你的Google_API_Key
 FIREBASE_CREDENTIALS_JSON={"type":"service_account","project_id":"你的專案ID",...完整的Firebase憑證JSON...}
 ```
 
-### 個別角色Prompt配置 🆕
+### 個別角色提示詞配置 🆕
 
 每個角色可以在 Firestore 的 `{character_id}/system` 文件中設定：
 
 ```json
 {
   "allowed_custom_prompt": true,  // 啟用自定義提示詞
-  "custom_prompt": "你的自定義prompt內容..."  // 自定義提示詞
+  "custom_prompt": "你的自定義提示詞內容..."  // 自定義提示詞
 }
 ```
 
