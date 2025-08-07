@@ -10,8 +10,8 @@
 
 - 🎭 **多角色支援**：同時 Host 多個 BOT，模組化新增角色
 - 🧠 **智慧記憶系統**：基於 AI 的記憶提取、統整與管理
-- 📝 **Prompt 模板系統**：模組化的 AI 提示詞管理，支援動態配置
-- 🎨 **個別角色自定義Prompt**：每個角色可擁有獨特的 prompt 設定，支援不同的表現風格 🆕
+- 📝 **提示詞模板系統**：模組化的 AI 提示詞管理，支援動態配置
+- 🎨 **個別角色自定義提示詞**：每個角色可擁有獨特的提示詞設定，支援不同的表現風格
 - 👥 **群組對話追蹤**：追蹤活躍使用者，支援多使用者群組對話
 - 💬 **私訊功能**：支援與授權使用者的私訊對話，具備權限管理
 - ✨ **表情符號回應**：依照使用者對話內容，觸發表情符號回應
@@ -72,8 +72,8 @@ your-project/
 │       ├── enable_dm: false       # 私訊功能開關
 │       ├── allowed_dm_users: []   # 允許私訊的使用者 ID 列表
 │       ├── intro: "角色簡介文字"
-│       ├── allowed_custom_prompt: false  # 是否啟用自定義prompt
-│       ├── custom_prompt: "自定義prompt內容"  # 個別角色prompt設定
+│       ├── allowed_custom_prompt: false  # 是否啟用自定義提示詞
+│       ├── custom_prompt: "自定義提示詞內容"  # 個別角色提示詞設定
 │       └── gemini_config: {       # 統一 Gemini 配置
 │           ├── model: "gemini-2.5-pro"
 │           ├── temperature: 1.0
@@ -86,7 +86,7 @@ your-project/
 
 ## 🧠 AI 記憶與提示詞系統
 
-### 📝 Prompt 模板系統
+### 📝 提示詞模板系統
 
 本系統採用模組化的 AI 提示詞管理，所有提示詞都儲存在 Firestore 的 `prompt` 集合中：
 
@@ -128,7 +128,7 @@ graph TD
 
 - **即時調整**：修改 Firestore 中的 `memory_limit` 無需重啟 BOT
 - **角色專屬**：每個角色可使用不同的 Gemini 模型和參數
-- **個別角色Prompt**：每個角色可擁有獨特的 prompt 設定
+- **個別角色提示詞**：每個角色可擁有獨特的提示詞設定
 - **快取機制**：提示詞和配置具備快取功能，提升效能
 - **錯誤處理**：完整的變數檢查和錯誤提示
 
@@ -216,14 +216,14 @@ FIREBASE_CREDENTIALS_JSON={"type":"service_account","project_id":"你的專案ID
 
 ```json
 {
-  "allowed_custom_prompt": true,  // 啟用自定義prompt
-  "custom_prompt": "你的自定義prompt內容..."  // 自定義prompt
+  "allowed_custom_prompt": true,  // 啟用自定義提示詞
+  "custom_prompt": "你的自定義prompt內容..."  // 自定義提示詞
 }
 ```
 
 **配置選項：**
-- `allowed_custom_prompt`: `true` 啟用自定義prompt，`false` 使用統一prompt
-- `custom_prompt`: 角色的自定義prompt內容，支援 `{character_name}` 變數
+- `allowed_custom_prompt`: `true` 啟用自定義提示詞，`false` 使用預設提示詞
+- `custom_prompt`: 角色的自定義提示詞內容，支援 `{character_name}` 變數
 
 ### 🚨 重要設定提醒
 
@@ -235,7 +235,7 @@ FIREBASE_CREDENTIALS_JSON={"type":"service_account","project_id":"你的專案ID
 
 ### 程式架構特色
 - **統一管理器**：`firebase_utils.py` 提供統一的 Firestore 連接和快取管理
-- **個別角色 Prompt 系統**：支援每個角色擁有獨特的prompt設定 
+- **個別角色提示詞系統**：支援每個角色擁有獨特的提示詞設定
 - **模組化設計**：核心功能分離，易於維護和擴展
 - **雲端配置**：所有設定都儲存在 Firestore，支援即時調整
 - **完整錯誤處理**：詳細的異常處理和調試資訊
