@@ -227,21 +227,44 @@ class FirebaseManager:
             return "", "gemini-2.0-flash"
         
         try:
-            # 先檢查角色是否有自定義prompt設定
+            # 檢查快取，避免重複顯示訊息
+            cache_key = f"{character_id}_prompt_source"
+            cached_source = self.get_from_cache(cache_key)
+            
+            if cached_source is None:
+                # 首次載入，檢查prompt來源
+                system_doc = self.db.collection(character_id).document('system').get()
+                if system_doc.exists:
+                    system_config = system_doc.to_dict()
+                    allowed_custom_prompt = system_config.get('allowed_custom_prompt', False)
+                    
+                    if allowed_custom_prompt:
+                        custom_prompt = system_config.get('custom_prompt', '')
+                        if custom_prompt:
+                            print(f"✅ {character_id} 使用自定義提示詞")
+                            self.set_to_cache(cache_key, "custom")
+                        else:
+                            print(f"✅ {character_id} 使用預設提示詞")
+                            self.set_to_cache(cache_key, "default")
+                    else:
+                        print(f"✅ {character_id} 使用預設提示詞")
+                        self.set_to_cache(cache_key, "default")
+                else:
+                    print(f"✅ {character_id} 使用預設提示詞")
+                    self.set_to_cache(cache_key, "default")
+            
+            # 獲取實際的prompt內容
             system_doc = self.db.collection(character_id).document('system').get()
             if system_doc.exists:
                 system_config = system_doc.to_dict()
                 allowed_custom_prompt = system_config.get('allowed_custom_prompt', False)
                 
                 if allowed_custom_prompt:
-                    # 使用角色的自定義prompt
                     custom_prompt = system_config.get('custom_prompt', '')
                     if custom_prompt:
-                        print(f"✅ 使用角色 {character_id} 的自定義提示詞")
-                        return custom_prompt, "gemini-2.0-flash"  # 自定義prompt使用預設模型
+                        return custom_prompt, "gemini-2.0-flash"
             
-            # 如果沒有自定義prompt或未啟用，則使用統一的prompt集合
-            print(f"✅ 使用預設的 {prompt_type} 提示詞設定")
+            # 使用統一的prompt集合
             return self.get_prompt_with_model(prompt_type)
             
         except Exception as e:
