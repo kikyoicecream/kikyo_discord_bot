@@ -191,7 +191,7 @@ class MultiBotLauncher:
         self.running = True
         enabled_bots = [bot for bot in self.bots if bot['enabled']]
         
-        print(f"\n🎭 啟動 {len(enabled_bots)} 個角色 Bot……")
+        print(f"\n🎭 啟動 {len(enabled_bots)} 個角色 Bot...")
         
         threads = []
         for bot in enabled_bots:
@@ -208,7 +208,7 @@ class MultiBotLauncher:
     
     def stop_all_bots(self):
         """停止所有 Bot"""
-        print("\n🛑 正在停止所有 Bot……")
+        print("\n🛑 正在停止所有 Bot...")
         self.running = False
     
     def show_status(self):

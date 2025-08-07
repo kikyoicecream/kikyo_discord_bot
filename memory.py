@@ -177,7 +177,7 @@ Conversation:
                 print(f"⚠️ Gemini 返回空內容，使用備用記憶")
                 return f"使用者進行了對話互動：{content[:30]}……"
             
-            print(f"📋 記憶摘要完成：{summarized[:30]}……")
+            print(f"📋 記憶摘要完成：{summarized[:30]}")
             return summarized
             
         except Exception as e:

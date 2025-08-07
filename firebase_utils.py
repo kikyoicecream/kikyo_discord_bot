@@ -237,15 +237,15 @@ class FirebaseManager:
                     # 使用角色的自定義prompt
                     custom_prompt = system_config.get('custom_prompt', '')
                     if custom_prompt:
-                        print(f"✅ 使用角色 {character_id} 的自定義prompt")
+                        print(f"✅ 使用角色 {character_id} 的自定義提示詞")
                         return custom_prompt, "gemini-2.0-flash"  # 自定義prompt使用預設模型
             
             # 如果沒有自定義prompt或未啟用，則使用統一的prompt集合
-            print(f"✅ 使用統一prompt集合的 {prompt_type} 設定")
+            print(f"✅ 使用預設的 {prompt_type} 提示詞設定")
             return self.get_prompt_with_model(prompt_type)
             
         except Exception as e:
-            self.log_error(f"獲取角色 {character_id} prompt設定", e)
+            self.log_error(f"讀取角色 {character_id} 的提示詞設定", e)
             return "", "gemini-2.0-flash"
  
 
